@@ -41,9 +41,11 @@ while True:
             
             key= cv2.waitKey(1) & 0xFF#0xFF ensures that the key code works on all systems
             if key == ord('s'):
-                label = input("Enter label for this gesture: ")
+                cv2.destroyAllWindows()
+                label = input("Enter label for this gesture: ").strip()
                 csv_writer.writerow(landmarks + [label])
                 print(f"Saved: {label}")
+                cap =cv2.VideoCapture(0)
     cv2.imshow("Data Collection", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
