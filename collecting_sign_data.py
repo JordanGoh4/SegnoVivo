@@ -7,22 +7,13 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands = 1)
 mp_draw = mp.solutions.drawing_utils
 
-output_file = 'sign_data.csv'
-file_exists = os.path.isfile(output_file) #helps to check if file already exists
+output_dir = 'sequence_data'
+os.makedirs(output_dir, exist_ok=True)
+cap = cv2.VideoCapture(0)
+recording = False
+current_sequence = []
 
-#with is a context manager that automatically handles closing file when done with it
-with open(output_file, mode='a', newline='') as f: #open() has 2 para, file to open and the mode parameter
-    csv_writer = csv.writer(f) #creates an object that simplifies writing structured data to a CSV file
-
-if not file_exists:
-    headers = [] #Names the columns in CSV like x0, y0 etc etc
-    for i in range(21):
-        headers += [f'x{i}', f'y{i}', f'z{i}']
-    headers.append('label') #Adds the corresponding hand representations when we start saving the data
-    csv_writer.writerow(headers) #Tells program to write one row with the contents of headers
-
-cap=cv2.VideoCapture(0)
-print("Press 's' to save frame with label. Press 'q' to quit")
+print("Press 'r' to start recording, 'e' to stop and save, 'q' to quit")
 
 while True:
     ret, frame = cap.read()
@@ -38,16 +29,44 @@ while True:
             landmarks = []
             for lm in hand_landmarks.landmark: #Loops through each of the 21 key points on the hand
                 landmarks += [lm.x, lm.y, lm.z]
-            
-            key= cv2.waitKey(1) & 0xFF#0xFF ensures that the key code works on all systems
-            if key == ord('s'):
-                cv2.destroyAllWindows()
-                label = input("Enter label for this gesture: ").strip()
-                csv_writer.writerow(landmarks + [label])
-                print(f"Saved: {label}")
-                cap =cv2.VideoCapture(0)
-    cv2.imshow("Data Collection", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+            if recording:
+                current_sequence.append(landmarks)
+    
+    if recording:
+        cv2.putText(frame, "Recording...", (10,30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2) #Displays text 10 px from left and 30 px from top, 1 = font-size, 2 refers to thickness
+    
+    cv2.imshow("Sequence Collector", frame)
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('r'):
+        print("Start recording sequence.")
+        recording = True
+        current_sequence = []
+    
+    elif key == ord('e') and recording:
+        recording = False
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+        label = input("Enter label for this sequence: ").strip()
+        sequence_file = os.path.join(output_dir, f"{label}_{len(os.listdir(output_dir))}.csv")
+
+        with open(sequence_file, mode='w', newline='') as f:
+            csv_writer = csv.writer(f)
+            for frame_landmarks in current_sequence:
+                csv_writer.writerow(frame_landmarks + [label])
+
+        print(f"Saved sequence as {sequence_file}")
+        current_sequence = []
+
+        # Reopen the webcam after labeling
+        cap = cv2.VideoCapture(0)
+        print("Press 'r' to start recording, 'e' to stop and save, 'q' to quit")
+
+    elif key == ord('q'):
         break
+
 cap.release()
 cv2.destroyAllWindows()
