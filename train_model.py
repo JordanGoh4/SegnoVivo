@@ -26,7 +26,7 @@ for file in os.listdir(data_dir):
             index_to_label[label_counter] = label
             label_counter +=1
         
-        sequence = df.iloc[:,:-1].to_numpy #This will drop the label column and keep only numeric features, and convert them to numpy array
+        sequence = df.iloc[:,:-1].to_numpy() #This will drop the label column and keep only numeric features, and convert them to numpy array
         sequences.append(sequence)
         labels.append(label_to_index[label])
 
