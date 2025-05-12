@@ -40,7 +40,47 @@ for seq in sequences:
     padded_seq = np.vstack((seq,padding)) #Will then vertically stack the original matrix with this padding matrix to make them uniform
     padded_sequences.append(padded_seq)
 X = np.array(padded_sequences) #Converts this into a numpy array
-#one-hot encoding transforms a single integer representing a class into a binary vector of 1s and 0s
+#one-hot encoding converts category labels into numeric vectors for models to understand since using numnbers may make model think there is order
+#to_categorical() converts lists into one-hot encoded vector. num_class tells TensorFlow how many distinct labels exist in dataset and how long one-hot vector should be
+#Example of one-hot vector: [0,1]
+y = tf.keras.utils.to_categorical(labels, num_class = len(label_to_index))
+
+#Argument for Sequential are the layers of data
+#Masking tells model to ignore padded parts of the sequence
+#LSTM(64) adds a long short term memory layer with 64 hidden units to learn temporal patterns
+#Dense(units, activation='softmax') outputs probabilities over the classes
+model = Sequential([
+    Masking(mask_value=0.0, input_shape=(max_sequence_length, X.shape[2])), #mask_value=0.0 ignores frames thatr are all 0s.X.shape[2] is the number of features per frame
+    LSTM(64),
+    Dense(len(label_to_index), activation='softmax')#1st para is the number of output classes, 2nd para converts raw scores to prob diist over class
+])
+
+#Configuring of model for training
+'''
+model.compile sets model to learn by 
+1) Adjusting its weights(Optimiser)
+2)What error to minimize(loss function)
+3)What progress to report(metrics)
+
+A neural network learns by adjusting weights based on how wrong its predictions are -> Optimiser determines how big/small adjustments are
+#Adam means Adaptive Moment Estimation -> Adjusts the learning rate automatically
+
+Loss function measures how far off the model's predictions are from the correct answers
+Categorical cross-entropy compares outputted probabilities to the correct one-hot label
+
+Metrics tells us how well the model is performing
+metrics is telling TensorFlow to track and report how often the model gets the label correctly
+'''
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+#An epoch is 1 full pass through all the training data
+model.fit(X,y, epochs=50) #In essence going through datasets 50 times. Can also specify number of data processed at anytime with batch_size
+
+model.save('gesture_model.h5')
+np.save('label_map.npy', index_to_label)
+print("Model training complete and saved as 'gesture_model.h5'.")
+
+
 
 
 
