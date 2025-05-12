@@ -43,7 +43,7 @@ X = np.array(padded_sequences) #Converts this into a numpy array
 #one-hot encoding converts category labels into numeric vectors for models to understand since using numnbers may make model think there is order
 #to_categorical() converts lists into one-hot encoded vector. num_class tells TensorFlow how many distinct labels exist in dataset and how long one-hot vector should be
 #Example of one-hot vector: [0,1]
-y = tf.keras.utils.to_categorical(labels, num_class = len(label_to_index))
+y = tf.keras.utils.to_categorical(labels, num_classes = len(label_to_index))
 
 #Argument for Sequential are the layers of data
 #Masking tells model to ignore padded parts of the sequence
