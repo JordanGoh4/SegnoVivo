@@ -46,3 +46,36 @@ while True:
     cv2.imshow("Live Prediction", frame)
     key = cv2.waitKey(1) & 0xFF
 
+    if key == ord('r'):
+        print("Started Recording")
+        recording = True
+        current_sequence = []
+    elif key == ord('e') and recording:
+        print("Stopped recording")
+        recording = False
+        sequence = np.array(current_sequence)
+        if len(sequence) < max_sequence_length:
+            padding = np.zeros(max_sequence_length - len(sequence), sequence.shape[1])
+            sequence = np.vstack((sequence, padding))
+        else:
+            sequence = sequence[:max_sequence_length]
+        
+        '''
+        Batch dimension represents how many examples are being processed simultaneously by neural network
+        code below adds a batch dimension to the array to [1,time,features]
+        Needed since Neural networks expect inputs in batches
+        '''
+        sequence = np.expand_dims(sequence, axis=0)
+        predictions = model.predict(sequence) #Returns an array of probabilities for gesture types
+        predicted_index = np.argmax(predictions)#argmax finds the index of highest probability
+        predicted_label = label_map[predicted_index]
+        print(f"Predicted Gesture: {predicted_label}")
+
+        current_sequence = []#Cleans the current sequence after prediction to prepare for a new recording
+    elif key == ord('q'):
+        break
+cap.release()
+cv2.destroyAllWindows()
+
+
+
