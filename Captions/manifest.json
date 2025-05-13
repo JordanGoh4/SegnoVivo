@@ -3,7 +3,7 @@
     "name": "Sign Language Avatar CC",
     "version": 1.0,
     "description": "Displays sign language avatar for videos",
-    "permissions": ["activeTab", "scripting"],
+    "permissions": ["activeTab", "scripting", "storage"],
     "host_permissions":  ["https://www.youtube.com/*"],
     "background": {
         "service_worker": "background.js"
