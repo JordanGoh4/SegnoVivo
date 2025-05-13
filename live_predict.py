@@ -2,7 +2,8 @@ import cv2
 import mediapipe as mp 
 import numpy as np 
 import tensorflow as tf 
-import os  
+import os
+import time  # Added for frame rate control
 
 model = tf.keras.models.load_model('gesture_model.h5') 
 ''' 
@@ -11,7 +12,6 @@ allow_pickle=True permits loading arrays containing Python objects. Needed becay
 ''' 
 label_map = np.load('label_map.npy', allow_pickle=True).item()  
 
-# Debug: print the label map to verify it loaded correctly
 print("Loaded label map:")
 print(label_map)
 
@@ -20,82 +20,86 @@ hands = mp_hands.Hands(max_num_hands = 1)
 mp_draw = mp.solutions.drawing_utils  
 
 cap = cv2.VideoCapture(0) 
-recording = False 
-current_sequence = [] 
-max_sequence_length = model.input_shape[1] 
-print("Press 'r' to start recording a gesture, 'e' to predict and 'q' to quit.")  
+
+# Parameters for continuous prediction
+frame_buffer = []  # Store recent frames for prediction
+buffer_size = 30   # Number of frames to keep in buffer (adjust as needed)
+max_sequence_length = model.input_shape[1]
+prediction_interval = 10  # Predict every N frames
+frame_count = 0
+last_prediction = "None"
+confidence_score = 0.0
+prediction_threshold = 0.5  # Minimum confidence to display a prediction
+
+print("Continuous prediction mode. Press 'q' to quit.")
 
 while True:     
-    ret,frame = cap.read()     
+    ret, frame = cap.read()     
     if not ret:         
         break     
-    frame = cv2.flip(frame,1)     
+    
+    frame = cv2.flip(frame, 1)     
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)     
     results = hands.process(rgb_frame)      
     
+    # Process hand landmarks if detected
     if results.multi_hand_landmarks:         
         for hand_landmarks in results.multi_hand_landmarks:             
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)             
             landmarks = []             
             for lm in hand_landmarks.landmark:                 
-                landmarks+=[lm.x,lm.y,lm.z] #flattens 21 landmarks with 3 coordinates per landmark             
-            if recording:                 
-                current_sequence.append(landmarks) #If recording will place the landmarks from this frame into sequence          
-    
-    if recording:         
-        cv2.putText(frame, "Recording...", (10,30),                     
-                  cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255),2)     
-    cv2.imshow("Live Prediction", frame)     
-    key = cv2.waitKey(1) & 0xFF      
-    
-    if key == ord('r'):         
-        print("Started Recording")         
-        recording = True         
-        current_sequence = []     
-    elif key == ord('e') and recording:         
-        print("Stopped recording")         
-        recording = False         
-        sequence = np.array(current_sequence)         
-        if len(sequence) < max_sequence_length:             
-            padding = np.zeros((max_sequence_length - len(sequence), sequence.shape[1]))             
-            sequence = np.vstack((sequence, padding))         
-        else:             
-            sequence = sequence[:max_sequence_length]                  
-        '''         
-        Batch dimension represents how many examples are being processed simultaneously by neural network         
-        code below adds a batch dimension to the array to [1,time,features]         
-        Needed since Neural networks expect inputs in batches         
-        '''         
-        sequence = np.expand_dims(sequence, axis=0)         
-        
-        predictions = model.predict(sequence) #Returns an array of probabilities for gesture types         
-        predicted_index = np.argmax(predictions[0]) #argmax finds the index of highest probability
-        confidence = predictions[0][predicted_index]
-        
-        print(f"Prediction array: {predictions[0]}")
-        print(f"Predicted index: {predicted_index}, Confidence: {confidence:.4f}")
-        
-        # Get the gesture name from our label map
-        if predicted_index in label_map:
-            predicted_label = label_map[predicted_index]
-            print(f"Predicted Gesture: {predicted_label} (Confidence: {confidence:.4f})")
-        else:
-            print(f"Unknown gesture with index {predicted_index}")
-        
-        # Display prediction on the frame
-        if predicted_index in label_map:
-            cv2.putText(frame, f"Gesture: {predicted_label}", (10, 70),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        else:
-            cv2.putText(frame, f"Unknown Gesture", (10, 70),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                landmarks += [lm.x, lm.y, lm.z] #flattens 21 landmarks with 3 coordinates per landmark
             
-        cv2.imshow("Live Prediction", frame)
-        cv2.waitKey(1500)  # Show for 1.5 seconds
+            # Add to buffer for continuous prediction
+            frame_buffer.append(landmarks)
+            # Keep buffer at fixed size
+            if len(frame_buffer) > buffer_size:
+                frame_buffer.pop(0)
+    
+    # Make a prediction every prediction_interval frames if we have enough data
+    frame_count += 1
+    if frame_count % prediction_interval == 0 and len(frame_buffer) >= 15:  # Need a minimum amount of frames
+        # Prepare sequence for prediction
+        sequence = np.array(frame_buffer)
         
-        current_sequence = [] #Cleans the current sequence after prediction to prepare for a new recording     
-    elif key == ord('q'):         
+        # Pad or trim sequence to match model's expected length
+        if len(sequence) < max_sequence_length:
+            padding = np.zeros((max_sequence_length - len(sequence), sequence.shape[1]))
+            sequence = np.vstack((sequence, padding))
+        else:
+            sequence = sequence[-max_sequence_length:]  # Take the most recent frames
+        
+        # Add batch dimension
+        sequence = np.expand_dims(sequence, axis=0)
+        
+        # Get prediction
+        predictions = model.predict(sequence, verbose=0)  # Use verbose=0 to suppress output
+        predicted_index = np.argmax(predictions[0])
+        confidence_score = predictions[0][predicted_index]
+        
+        # Only update prediction if confidence is above threshold
+        if confidence_score > prediction_threshold:
+            if predicted_index in label_map:
+                last_prediction = label_map[predicted_index]
+            else:
+                last_prediction = f"Unknown-{predicted_index}"
+    
+    # Display the current prediction on the frame
+    cv2.putText(frame, f"Gesture: {last_prediction}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame, f"Confidence: {confidence_score:.2f}", (10, 70),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    
+    # Display the frame
+    cv2.imshow("Live Prediction", frame)     
+    
+    # Check for exit command
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):         
         break 
+    
+    # Optional: Add a slight delay to reduce CPU usage
+    time.sleep(0.01)
 
 cap.release() 
 cv2.destroyAllWindows()
