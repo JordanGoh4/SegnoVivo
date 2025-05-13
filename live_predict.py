@@ -86,9 +86,9 @@ while True:
     
     # Display the current prediction on the frame
     cv2.putText(frame, f"Gesture: {last_prediction}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     cv2.putText(frame, f"Confidence: {confidence_score:.2f}", (10, 70),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
     
     # Display the frame
     cv2.imshow("Live Prediction", frame)     
