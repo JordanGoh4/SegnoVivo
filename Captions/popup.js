@@ -38,7 +38,16 @@ function saveSettings() {
 
 function loadSettings() {
     chrome.storage.sync.get({
-        
-    })
+        active: false,
+        autoStart: true,
+        pipMode: false,
+        hightContrast: false
+    }, (items)=>{
+        autoStartToggle.checked = items.autoStart;
+        pipModeToggle.checked = items.pipMode;
+        highContrastToggle.checked = items.hightContrast;
+
+        updateUI(items.active);
+    });
 }
 
