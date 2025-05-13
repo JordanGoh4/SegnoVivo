@@ -1,7 +1,8 @@
 import cv2
 import mediapipe as mp
-import csv #converting the data into a .csv file
-import os 
+import csv
+import os
+import numpy as np
 
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands = 1)
@@ -12,6 +13,19 @@ os.makedirs(output_dir, exist_ok=True)
 cap = cv2.VideoCapture(0)
 recording = False
 current_sequence = []
+
+# Create or load the existing label map
+label_map_file = 'label_map.npy'
+if os.path.exists(label_map_file):
+    try:
+        label_map = np.load(label_map_file, allow_pickle=True).item()
+        print(f"Loaded existing label map with {len(label_map)} labels")
+    except:
+        label_map = {}
+        print("Created new label map")
+else:
+    label_map = {}
+    print("Created new label map")
 
 print("Press 'r' to start recording, 'e' to stop and save, 'q' to quit")
 
@@ -59,6 +73,23 @@ while True:
                 csv_writer.writerow(frame_landmarks + [label])
 
         print(f"Saved sequence as {sequence_file}")
+        
+        # Check if this label exists in our label map
+        label_exists = False
+        for idx, name in label_map.items():
+            if name == label:
+                label_exists = True
+                break
+                
+        # Add the label to our map if it doesn't exist
+        if not label_exists:
+            new_idx = len(label_map)
+            label_map[new_idx] = label
+            print(f"Added new label '{label}' with index {new_idx} to label map")
+            # Save the updated label map
+            np.save(label_map_file, label_map)
+            print(f"Saved updated label map: {label_map}")
+
         current_sequence = []
 
         # Reopen the webcam after labeling
@@ -70,3 +101,8 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
+# Final save of the label map
+if label_map:
+    np.save(label_map_file, label_map)
+    print(f"Final label map saved: {label_map}")

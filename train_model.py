@@ -16,22 +16,36 @@ index_to_label = {}
 label_counter = 0 #Tracks how many unique labels present
 max_sequence_length = 0 #Tracks the longest sequence for padding purposes
 
+# Print out what we're doing
+print("Loading sequence data...")
+
 for file in os.listdir(data_dir):
     if file.endswith(".csv"):
-        df = pd.read_csv(os.path.join(data_dir, file), header=None) #os.path.join ensures that path separator works for any OS, pandas by default treats 1st row as column names, hence need None
-        label = df.iloc[0,1] #Uses integer location based indexing to extract a specific value, 0 means 1st row, -1 means last column
+        file_path = os.path.join(data_dir, file)
+        df = pd.read_csv(file_path, header=None) #os.path.join ensures that path separator works for any OS, pandas by default treats 1st row as column names, hence need None
+        
+        # Get the label from the file name (more reliable method)
+        label = file.split('_')[0]  # Extract label from filename (assuming format "label_xxx.csv")
+        print(f"Processing file: {file}, Label: {label}")
 
         if label not in label_to_index:
             label_to_index[label] = label_counter
             index_to_label[label_counter] = label
-            label_counter +=1
+            print(f"Added new label: {label} with index {label_counter}")
+            label_counter += 1
         
+        # Get features (all columns except the last one)
         sequence = df.iloc[:,:-1].to_numpy() #This will drop the label column and keep only numeric features, and convert them to numpy array
         sequences.append(sequence)
         labels.append(label_to_index[label])
 
         if len(sequence) > max_sequence_length:
             max_sequence_length = len(sequence)
+
+print(f"Found {len(sequences)} sequences with {label_counter} unique labels")
+print(f"Labels: {index_to_label}")
+print(f"Maximum sequence length: {max_sequence_length}")
+
 #Neural networks require fixed-size inputs for processing, if we have 2 gestures with timestamp diff of 10, with 3 features each, 
 #seq.shape[1] gives 3 therefore we are creating a 10x3 array of zeros
 padded_sequences = []
@@ -44,6 +58,9 @@ X = np.array(padded_sequences) #Converts this into a numpy array
 #to_categorical() converts lists into one-hot encoded vector. num_class tells TensorFlow how many distinct labels exist in dataset and how long one-hot vector should be
 #Example of one-hot vector: [0,1]
 y = tf.keras.utils.to_categorical(labels, num_classes = len(label_to_index))
+
+print(f"Input shape: {X.shape}")
+print(f"Output shape: {y.shape}")
 
 #Argument for Sequential are the layers of data
 #Masking tells model to ignore padded parts of the sequence
@@ -77,10 +94,16 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 model.fit(X,y, epochs=50) #In essence going through datasets 50 times. Can also specify number of data processed at anytime with batch_size
 
 model.save('gesture_model.h5')
-np.save('label_map.npy', index_to_label)
+
+# Create the correct label map for prediction - this is the critical fix!
+# We need a map from index to label name, not what was previously saved
+label_map = {}
+for idx, label in index_to_label.items():
+    label_map[idx] = label
+
+print("Saving label map:")
+print(label_map)
+np.save('label_map.npy', label_map)
+
 print("Model training complete and saved as 'gesture_model.h5'.")
-
-
-
-
-
+print("Label map saved as 'label_map.npy'")
