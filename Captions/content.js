@@ -84,7 +84,7 @@ async function createAvatar() {
 
     applyAvatarStyles();
     //To add to this later, for now a random localhost
-    const response = await fetch("http://localhost:8888/transcribe", {
+    const response = await fetch("http://localhost:5000/transcribe", {
         method: "POST",
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({videoId})
