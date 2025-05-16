@@ -141,6 +141,74 @@ function removeAvatar() {
     }
 }
 
+function applyAvatarStyles() {
+    if (!avatarDiv) return;
+
+    //Activates high contrast if user sets it
+    if (settings.highContrast){
+        avatarDiv.style.background = '#000000';
+        avatarDiv.style.color = '#ffffff';
+        avatarDiv.style.border = '2px solid #ffffff';
+    } else{
+        avatarDiv.style.background = 'rgba(255,255,255,0.9)';
+        avatarDiv.style.color = '#000000';
+        avatarDiv.style.border = 'none';
+    }
+}
+
+function setUpPipObserver(){
+    //For now it only logs info need to add more codes for it to work
+    document.addEventListener('enterpictureinpicture', (event) => {
+        if (settings.pipMode && settings.active) {
+            const pipWindow = event.pictureInPictureWindow;
+            console.log("In PiP Mode, size:", pipWindow.width, pipWindow.height);
+        }
+    });
+    document.addEventListener('leavepictureinpicture', () => {
+        console.log("Exited PiP Mode");
+    });
+}
+
+function makeAvatarDraggable() {
+    if (!avatarDiv) return;
+
+    let isDragging = false;
+    let offsetX, offsetY;
+    //Need to add a draggable header to create a draggable area
+    const header = document.createElement('div');
+    header.style.cursor = 'move';
+    header.style.padding = '5px';
+    header.style.marginBottom = '5px';
+    header.addEventListener('mousedown', (e)=>{
+        isDragging = true;
+        offsetX = e.clientX - avatarDiv.getBoundingClientRect().left;//Offsets mouse position and top-left corner of avatar
+        offsetY = e.clientY - avatarDiv.getBoundingClientRect().top;
+    });
+    document.addEventListener('mousemove', (e)=>{
+        if (!isDragging) return;
+        avatarDiv.style.left = (e.clientX - offsetX) + 'px';
+        avatarDiv.style.right = 'auto';
+        avatarDiv.style.top = (e.clientY - offsetY) + 'px';
+        avatarDiv.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', ()=>{
+        isDragging = false;
+    });
+    avatarDiv.prepend(header);//Adds header as 1st child of avatarDiv and handles both cases to see if avatarDiv has children
+}
+
+initialize();
+let lastURL = location.href;
+new MutationObserver(()=>{
+    if (location.href !== lastURL){
+        lastURL = location.href;
+        setTimeout(initialize,1000);
+    }
+}).observe(document, {subtree:true, childList:true});
+
+
+
+
 
 
     
