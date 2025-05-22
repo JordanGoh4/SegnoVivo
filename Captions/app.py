@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS  # Add this import
 import os
 import whisper
 import yt_dlp
 from datasets import load_dataset
 import nltk
 from nltk.tokenize import sent_tokenize
+import uuid  # Add this import for generating unique IDs
+import json  # Add this import
 
 # Download NLTK resources if not already downloaded
 nltk.download('punkt', quiet=True)
@@ -113,7 +116,17 @@ class ASLGPC12Translator:
 asl_translator = ASLGPC12Translator()
 
 app = Flask(__name__) #A new Flask web application instance, __name__ is a special Python variable representing name of current module
+CORS(app)  # Enable CORS for all routes - this is crucial for your Chrome extension
+
+# Create directories for storing files
+os.makedirs('static/animations', exist_ok=True)
+
 model = whisper.load_model('base') #due to limited computer mem, we will use the smallest model
+
+@app.route('/static/animations/<path:filename>')
+def serve_animation(filename):
+    """Serve animation files to the frontend"""
+    return send_from_directory('static/animations', filename)
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
@@ -185,5 +198,63 @@ def transcribe():
             os.remove(filename)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/generate-avatar', methods=['POST'])
+def generate_avatar():
+    """Generate avatar animation for ASL gloss (placeholder implementation)"""
+    try:
+        data = request.get_json()
+        asl_gloss = data.get('asl_gloss')
+        
+        if not asl_gloss:
+            return jsonify({"error": "ASL gloss is required"}), 400
+        
+        print(f"Generating avatar for ASL gloss: {asl_gloss}")
+        
+        # Generate a unique filename
+        animation_id = str(uuid.uuid4())
+        animation_path = f"static/animations/{animation_id}.json"
+        
+        # TODO: Replace this section with actual SignMoz integration
+        # For now, we'll create a placeholder response
+        placeholder_data = {
+            "asl_gloss": asl_gloss,
+            "animation_type": "placeholder",
+            "message": "Avatar generation placeholder - SignMoz integration coming soon!",
+            "created_at": str(uuid.uuid4())
+        }
+        
+        # Save placeholder data
+        with open(animation_path, 'w') as f:
+            json.dump(placeholder_data, f, indent=2)
+        
+        print(f"Avatar placeholder created: {animation_path}")
+        
+        return jsonify({
+            "success": True,
+            "animation_url": f"/static/animations/{animation_id}.json",
+            "message": "Avatar generation successful (placeholder mode)",
+            "asl_gloss": asl_gloss
+        })
+    
+    except Exception as e:
+        print(f"Error in generate_avatar: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint to verify the server is running"""
+    return jsonify({
+        "status": "healthy", 
+        "message": "Sign Avatar CC Backend is running!",
+        "translator_loaded": len(asl_translator.sentence_pairs) > 0
+    })
+
 if __name__ == '__main__':
-    app.run(port=5000)
+    print("Starting Sign Avatar CC Backend...")
+    print(f"ASLG-PC12 translator status: {len(asl_translator.sentence_pairs)} sentence pairs loaded")
+    print("Server will be available at: http://localhost:5000")
+    print("Health check: http://localhost:5000/health")
+    app.run(debug=True, host='localhost', port=5000)

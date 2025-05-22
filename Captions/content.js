@@ -224,34 +224,27 @@ async function generateAvatarForSegment(aslGloss, containerElement) {
         
         const data = await response.json();
         
-        if (data.success && data.animation_url) {
-            // Create video element for the animation
-            const video = document.createElement('video');
-            video.src = `http://localhost:5000${data.animation_url}`;
-            video.controls = true;
-            video.autoplay = false;
-            video.loop = true;
-            video.muted = true; // Start muted to avoid auto-play issues
-            video.style.width = '100%';
-            video.style.height = '100%';
-            video.style.borderRadius = '8px';
-            video.style.objectFit = 'cover';
+        if (data.success) {
+            // Since no Avatar now, placeholder
+            containerElement.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 10px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">🤟</div>
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">ASL AVATAR</div>
+                    <div style="font-size: 12px; opacity: 0.9;">${aslGloss}</div>
+                    <div style="font-size: 10px; opacity: 0.7; margin-top: 8px;">Coming Soon!</div>
+                </div>
+            `;
             
-            // Clear the container and add the video
-            containerElement.innerHTML = '';
-            containerElement.appendChild(video);
-            
-            // Add play/pause functionality on click
+            containerElement.style.cursor = 'pointer';
             containerElement.addEventListener('click', () => {
-                if (video.paused) {
-                    video.play();
-                } else {
-                    video.pause();
-                }
+                // For now, just highlight the text
+                containerElement.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    containerElement.style.transform = 'scale(1)';
+                }, 150);
             });
             
-            // Add hover effect to show the users it's interactive
-            containerElement.style.cursor = 'pointer';
+            // Adds hover effect
             containerElement.addEventListener('mouseenter', () => {
                 containerElement.style.opacity = '0.8';
             });
@@ -263,7 +256,7 @@ async function generateAvatarForSegment(aslGloss, containerElement) {
         }
     } catch (error) {
         console.error("Error generating avatar:", error);
-        containerElement.innerHTML = '<p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Avatar generation failed</p>';
+        containerElement.innerHTML = '<p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Avatar connection failed</p>';
     }
 }
 

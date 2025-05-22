@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign Avatar CC</title>
   <style>
+    /* Root CSS variables for consistent theming */
     :root {
       --primary: #2d72d9;
       --primary-dark: #1a5dc7;
@@ -15,6 +16,7 @@
       --shadow: rgba(0, 0, 0, 0.1);
     }
 
+    /* Reset and base styles */
     * {
       margin: 0;
       padding: 0;
@@ -23,28 +25,19 @@
     }
 
     body {
-      width: 320px;
+      width: 350px;
+      height: 500px;
       background-color: var(--background);
-      padding: 0;
-      overflow: hidden;
-      border-radius: 8px;
+      color: var(--text);
+      overflow-y: auto;
     }
 
-    .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
+    /* Header section styling */
     .header {
-      width: 100%;
-      background-color: var(--primary);
-      padding: 15px 20px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
+      padding: 20px;
       text-align: center;
-      border-radius: 8px 8px 0 0;
-      position: relative;
-      box-shadow: 0 2px 8px var(--shadow);
     }
 
     .logo {
@@ -56,119 +49,109 @@
 
     .logo-icon {
       font-size: 24px;
-      margin-right: 10px;
+      margin-right: 8px;
     }
 
     h1 {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
     }
 
     .subtitle {
-      font-size: 13px;
-      opacity: 0.85;
+      font-size: 14px;
+      opacity: 0.9;
       margin-top: 4px;
     }
 
-    .content {
-      width: 100%;
+    /* Status section styling */
+    .status {
+      padding: 20px;
       background-color: var(--card);
-      padding: 25px 20px;
-      border-radius: 0 0 8px 8px;
+      border-bottom: 1px solid #eee;
     }
 
-    .status {
+    .status-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
-      padding: 12px 15px;
-      background-color: rgba(45, 114, 217, 0.1);
-      border-radius: 6px;
+      margin-bottom: 15px;
     }
 
-    .status-text {
-      font-size: 14px;
-      color: var(--text);
-      font-weight: 500;
+    .status-info {
       display: flex;
       align-items: center;
     }
 
     .status-dot {
-      width: 10px;
-      height: 10px;
-      background-color: #ccc;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
+      background-color: #ccc;
       margin-right: 8px;
       transition: background-color 0.3s ease;
     }
 
     .status-dot.active {
       background-color: var(--secondary);
-      box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.3);
     }
 
-    .divider {
-      width: 100%;
-      height: 1px;
-      background-color: rgba(0, 0, 0, 0.1);
-      margin: 20px 0;
-    }
-
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 100%;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 6px;
+    .status-text {
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
+    }
+
+    /* Activate button styling */
+    .activate-btn {
+      background: var(--secondary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      font-weight: 500;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      transition: background-color 0.2s ease;
     }
 
-    .btn-primary {
-      background-color: var(--primary);
-      color: white;
+    .activate-btn:hover {
+      background: #2ba94d;
     }
 
-    .btn-primary:hover {
-      background-color: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(45, 114, 217, 0.25);
+    .activate-btn.active {
+      background: #ff9500;
     }
 
-    .btn-secondary {
-      background-color: transparent;
-      color: var(--primary);
-      border: 1px solid var(--primary);
+    .activate-btn.active:hover {
+      background: #e6850e;
     }
 
-    .btn-secondary:hover {
-      background-color: rgba(45, 114, 217, 0.1);
-    }
-
+    /* Settings section styling */
     .settings {
-      width: 100%;
-      margin-top: 15px;
+      padding: 20px;
+      background-color: var(--card);
+    }
+
+    .settings-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--text);
     }
 
     .settings-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 0;
+      padding: 12px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .settings-item:last-child {
+      border-bottom: none;
     }
 
     .settings-label {
@@ -176,11 +159,18 @@
       color: var(--text);
     }
 
+    .settings-description {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    /* Toggle switch styling */
     .switch {
       position: relative;
       display: inline-block;
-      width: 40px;
-      height: 20px;
+      width: 50px;
+      height: 25px;
     }
 
     .switch input {
@@ -198,16 +188,16 @@
       bottom: 0;
       background-color: #ccc;
       transition: .4s;
-      border-radius: 20px;
+      border-radius: 25px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
-      left: 2px;
-      bottom: 2px;
+      height: 19px;
+      width: 19px;
+      left: 3px;
+      bottom: 3px;
       background-color: white;
       transition: .4s;
       border-radius: 50%;
@@ -218,132 +208,219 @@
     }
 
     input:checked + .slider:before {
-      transform: translateX(20px);
+      transform: translateX(25px);
     }
 
-    .footer {
+    /* Range slider styling for avatar size */
+    .range-control {
       width: 100%;
-      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .range-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: none;
+    }
+
+    .range-value {
+      font-weight: bold;
       text-align: center;
       font-size: 12px;
-      color: #777;
-      background-color: var(--card);
-      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      color: var(--primary);
     }
 
-    /* Sign language hand icon animation */
-    .hand-icon {
-      display: inline-block;
-      font-size: 28px;
-      animation: wave 2s infinite;
-      transform-origin: 70% 70%;
+    /* Avatar size container - initially hidden */
+    .avatar-size-container {
+      display: none;
     }
 
-    @keyframes wave {
-      0% { transform: rotate(0deg); }
-      10% { transform: rotate(14deg); }
-      20% { transform: rotate(-8deg); }
-      30% { transform: rotate(14deg); }
-      40% { transform: rotate(-4deg); }
-      50% { transform: rotate(10deg); }
-      60% { transform: rotate(0deg); }
-      100% { transform: rotate(0deg); }
+    /* Footer section styling */
+    .footer {
+      padding: 15px 20px;
+      background-color: #f8f9fa;
+      border-top: 1px solid #eee;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* Utility classes */
+    .flex-column {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    /* Responsive adjustments */
+    @media (max-height: 600px) {
+      body {
+        height: auto;
+        min-height: 500px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">
-        <span class="hand-icon">👋</span>
-        <h1>Sign Avatar CC</h1>
-      </div>
-      <p class="subtitle">Sign language interpreter for videos</p>
+  <!-- Header section with logo and title -->
+  <div class="header">
+    <div class="logo">
+      <span class="logo-icon">🤟</span>
+      <h1>Sign Avatar CC</h1>
     </div>
+    <div class="subtitle">AI-Powered Sign Language Captions</div>
+  </div>
 
-    <div class="content">
-      <div class="status">
-        <span class="status-text"><span class="status-dot" id="statusDot"></span> <span id="statusText">Inactive</span></span>
-        <label class="switch">
-          <input type="checkbox" id="activateToggle">
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <div class="button-group">
-        <button id="activate" class="btn btn-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-          Start Interpreter
-        </button>
-        <button id="customize" class="btn btn-secondary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Customize Avatar
-        </button>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="settings">
-        <div class="settings-item">
-          <span class="settings-label">Auto-start on videos</span>
-          <label class="switch">
-            <input type="checkbox" id="autoStart" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="settings-item">
-          <span class="settings-label">Show avatar on PiP</span>
-          <label class="switch">
-            <input type="checkbox" id="pipMode">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="settings-item">
-          <span class="settings-label">High contrast mode</span>
-          <label class="switch">
-            <input type="checkbox" id="highContrast">
-            <span class="slider"></span>
-          </label>
-        </div>
+  <!-- Status section showing current state -->
+  <div class="status">
+    <div class="status-row">
+      <div class="status-info">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Inactive</span>
       </div>
     </div>
+    
+    <!-- Main activate/deactivate button -->
+    <button class="activate-btn" id="activateBtn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+      Start Interpreter
+    </button>
+  </div>
 
-    <div class="footer">
-      Sign Avatar CC v1.0 · Enhancing video accessibility
+  <!-- Settings section with all configuration options -->
+  <div class="settings">
+    <div class="settings-title">Settings</div>
+    
+    <!-- Auto-start setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">Auto-start on video pages</span>
+        <span class="settings-description">Automatically activate when visiting YouTube videos</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="autoStart" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Picture-in-Picture mode setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">Picture-in-Picture mode</span>
+        <span class="settings-description">Show captions in PiP window</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="pipMode">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- High contrast mode setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">High contrast mode</span>
+        <span class="settings-description">Dark background with bright text</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="highContrast">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Sign language avatar setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">Show sign language avatar</span>
+        <span class="settings-description">Display 3D signing avatar with captions</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="showAvatar" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Avatar size setting (shown only when avatar is enabled) -->
+    <div class="settings-item avatar-size-container" id="avatarSizeContainer">
+      <div class="flex-column" style="width: 100%;">
+        <span class="settings-label">Avatar size</span>
+        <span class="settings-description">Adjust the size of the signing avatar</span>
+        <div class="range-control">
+          <input type="range" min="100" max="300" value="150" class="range-slider" id="avatarSize">
+          <div class="range-value" id="avatarSizeValue">150px</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Show all captions setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">Show all captions</span>
+        <span class="settings-description">Display all captions or only current ones</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="showAllCaptions">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- This highlights fingerspelled words setting -->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">Highlight fingerspelled words</span>
+        <span class="settings-description">Emphasize words that are fingerspelled</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="highlightFingerspelling" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- For people to hide el and keep only ASL gloss-->
+    <div class="settings-item">
+      <div class="flex-column">
+        <span class="settings-label">ASL-only mode</span>
+        <span class="settings-description">Hide English text, show only ASL gloss</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="aslOnly">
+        <span class="slider"></span>
+      </label>
     </div>
   </div>
 
+ 
+  <div class="footer">
+    <div class="footer-text">Sign Avatar CC v1.0 - Making videos accessible for all</div>
+  </div>
+
   <script src="popup.js"></script>
-  <script>
-    // Simple functionality for the demo
-    const activateBtn = document.getElementById('activate');
-    const activateToggle = document.getElementById('activateToggle');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-
-    activateBtn.addEventListener('click', function() {
-      activateToggle.checked = !activateToggle.checked;
-      updateStatus();
-    });
-
-    activateToggle.addEventListener('change', updateStatus);
-
-    function updateStatus() {
-      if (activateToggle.checked) {
-        statusDot.classList.add('active');
-        statusText.textContent = 'Active';
-        activateBtn.textContent = 'Interpreter Running';
-      } else {
-        statusDot.classList.remove('active');
-        statusText.textContent = 'Inactive';
-        activateBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Start Interpreter';
-      }
-    }
-  </script>
 </body>
 </html>
