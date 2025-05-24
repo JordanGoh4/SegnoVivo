@@ -4,12 +4,601 @@ let settings = {
     pipMode: false,
     highContrast: false,
     showAvatar: true,
-    avatarSize: 150
+    avatarSize: 150,
+    avatarMethod: 'dataset',
+    showAllCaptions: false,
+    highlightFingerspelling: true,
+    aslOnly: false
 };
 
-let avatarDiv = null; //Will hold actual box element displayed on screen
-let isAvatarDisplayed = false; //Remembers if avatar is currently showing(starts as 'no')
+let avatarDiv = null;
+let isAvatarDisplayed = false;
+let currentAvatarAnimations = new Map();
+let animationCache = new Map();
 
+// Enhanced Avatar Renderer for Real Dataset Animations
+class DatasetAvatarRenderer {
+    constructor(container, size = 150) {
+        this.container = container;
+        this.size = size;
+        this.canvas = null;
+        this.ctx = null;
+        this.animationFrame = null;
+        this.currentAnimation = null;
+        this.frameIndex = 0;
+        this.isPlaying = false;
+        this.animationSpeed = 1.0;
+        
+        this.initCanvas();
+        this.initControls();
+    }
+    
+    initCanvas() {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.size;
+        this.canvas.height = this.size;
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.canvas.style.borderRadius = '8px';
+        this.canvas.style.background = settings.highContrast ? '#000000' : '#f0f8ff';
+        
+        this.ctx = this.canvas.getContext('2d');
+        this.container.innerHTML = '';
+        this.container.appendChild(this.canvas);
+        
+        // Initialize drawing settings
+        this.setupDrawingContext();
+    }
+    
+    setupDrawingContext() {
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+    }
+    
+    initControls() {
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'avatar-controls';
+        controlsDiv.style.cssText = `
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: rgba(0,0,0,0.8);
+            padding: 6px 10px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        `;
+        
+        // Play/Pause button
+        const playBtn = this.createControlButton('▶️', () => {
+            if (this.isPlaying) {
+                this.pause();
+                playBtn.textContent = '▶️';
+            } else {
+                this.play();
+                playBtn.textContent = '⏸️';
+            }
+        });
+        
+        // Reset button
+        const resetBtn = this.createControlButton('⏮️', () => {
+            this.reset();
+            playBtn.textContent = '▶️';
+        });
+        
+        // Speed control
+        const speedBtn = this.createControlButton('1x', () => {
+            this.cycleSpeed();
+            speedBtn.textContent = `${this.animationSpeed}x`;
+        });
+        
+        // Quality indicator
+        const qualityIndicator = document.createElement('div');
+        qualityIndicator.className = 'quality-indicator';
+        qualityIndicator.style.cssText = `
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: rgba(45, 114, 217, 0.7);
+        `;
+        qualityIndicator.textContent = 'Dataset';
+        
+        controlsDiv.appendChild(resetBtn);
+        controlsDiv.appendChild(playBtn);
+        controlsDiv.appendChild(speedBtn);
+        controlsDiv.appendChild(qualityIndicator);
+        
+        this.container.style.position = 'relative';
+        this.container.appendChild(controlsDiv);
+        
+        this.playBtn = playBtn;
+        this.qualityIndicator = qualityIndicator;
+    }
+    
+    createControlButton(text, onClick) {
+        const button = document.createElement('button');
+        button.textContent = text;
+        button.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        `;
+        button.addEventListener('click', onClick);
+        button.addEventListener('mouseenter', () => {
+            button.style.background = 'rgba(255,255,255,0.2)';
+        });
+        button.addEventListener('mouseleave', () => {
+            button.style.background = 'none';
+        });
+        return button;
+    }
+    
+    cycleSpeed() {
+        const speeds = [0.5, 1.0, 1.5, 2.0];
+        const currentIndex = speeds.indexOf(this.animationSpeed);
+        this.animationSpeed = speeds[(currentIndex + 1) % speeds.length];
+    }
+    
+    async loadAnimation(animationData) {
+        try {
+            console.log('Loading animation:', animationData);
+            this.currentAnimation = animationData;
+            this.frameIndex = 0;
+            
+            // Update quality indicator based on data source
+            this.updateQualityIndicator(animationData);
+            
+            // Handle different animation types from real datasets
+            if (animationData.type === 'real_dataset_poses') {
+                await this.loadDatasetAnimation(animationData);
+            } else if (animationData.type === 'mediapipe_poses') {
+                await this.loadMediaPipeAnimation(animationData);
+            } else {
+                await this.loadFallbackAnimation(animationData);
+            }
+            
+            this.render();
+            
+        } catch (error) {
+            console.error('Error loading animation:', error);
+            this.loadErrorAnimation();
+        }
+    }
+    
+    updateQualityIndicator(animationData) {
+        const dataSource = animationData.data_source || 'unknown';
+        let quality = 'Basic';
+        let color = 'rgba(128, 128, 128, 0.7)';
+        
+        if (dataSource === 'real_asl_datasets') {
+            quality = 'Dataset';
+            color = 'rgba(45, 114, 217, 0.7)';
+        } else if (animationData.libraries_used?.includes('mediapipe')) {
+            quality = 'MediaPipe';
+            color = 'rgba(76, 175, 80, 0.7)';
+        }
+        
+        this.qualityIndicator.textContent = quality;
+        this.qualityIndicator.style.background = color;
+    }
+    
+    async loadDatasetAnimation(animationData) {
+        this.animationSequence = animationData.animation_sequence || [];
+        this.totalFrames = animationData.total_frames || 30;
+        this.fps = animationData.fps || 30;
+        this.dataSource = animationData.data_source;
+        
+        console.log(`Loaded dataset animation: ${this.animationSequence.length} words, ${this.totalFrames} frames`);
+    }
+    
+    async loadMediaPipeAnimation(animationData) {
+        this.poseData = animationData.pose_sequence || [];
+        this.totalFrames = this.poseData.length;
+        this.fps = animationData.fps || 30;
+    }
+    
+    async loadFallbackAnimation(animationData) {
+        this.totalFrames = 60;
+        this.fps = 30;
+        this.fallbackData = animationData;
+    }
+    
+    loadErrorAnimation() {
+        this.totalFrames = 30;
+        this.fps = 30;
+        this.errorMode = true;
+        this.qualityIndicator.textContent = 'Error';
+        this.qualityIndicator.style.background = 'rgba(244, 67, 54, 0.7)';
+    }
+    
+    play() {
+        if (!this.currentAnimation) return;
+        
+        this.isPlaying = true;
+        
+        const animate = () => {
+            if (!this.isPlaying) return;
+            
+            this.render();
+            this.frameIndex++;
+            
+            if (this.frameIndex >= this.totalFrames) {
+                this.frameIndex = 0; // Loop animation
+            }
+            
+            const frameDelay = (1000 / this.fps) / this.animationSpeed;
+            setTimeout(() => {
+                this.animationFrame = requestAnimationFrame(animate);
+            }, frameDelay);
+        };
+        
+        animate();
+    }
+    
+    pause() {
+        this.isPlaying = false;
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+        }
+    }
+    
+    reset() {
+        this.pause();
+        this.frameIndex = 0;
+        this.render();
+    }
+    
+    render() {
+        if (!this.ctx) return;
+        
+        // Clear canvas
+        this.clearCanvas();
+        
+        if (this.errorMode) {
+            this.renderError();
+        } else if (this.currentAnimation?.type === 'real_dataset_poses') {
+            this.renderDatasetAnimation();
+        } else if (this.currentAnimation?.type === 'mediapipe_poses') {
+            this.renderMediaPipeAnimation();
+        } else {
+            this.renderFallback();
+        }
+        
+        // Add frame progress indicator
+        this.renderProgressIndicator();
+    }
+    
+    clearCanvas() {
+        this.ctx.fillStyle = settings.highContrast ? '#000000' : '#f0f8ff';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    renderDatasetAnimation() {
+        if (!this.animationSequence || this.animationSequence.length === 0) return;
+        
+        // Find current word and frame within that word
+        let currentFrame = this.frameIndex;
+        let currentWordData = null;
+        let frameInWord = 0;
+        
+        for (const wordData of this.animationSequence) {
+            if (currentFrame < wordData.frame_count) {
+                currentWordData = wordData;
+                frameInWord = currentFrame;
+                break;
+            }
+            currentFrame -= wordData.frame_count;
+        }
+        
+        if (!currentWordData) return;
+        
+        // Render based on dataset quality
+        const quality = currentWordData.quality || 'basic';
+        
+        if (quality === 'high' && currentWordData.frames && currentWordData.frames[frameInWord]) {
+            this.renderHighQualityFrame(currentWordData, frameInWord);
+        } else if (quality === 'medium') {
+            this.renderMediumQualityFrame(currentWordData, frameInWord);
+        } else if (currentWordData.type === 'fingerspelling') {
+            this.renderFingerspellingFrame(currentWordData, frameInWord);
+        } else {
+            this.renderBasicFrame(currentWordData, frameInWord);
+        }
+        
+        // Show current word
+        this.renderCurrentWord(currentWordData.word, currentWordData.dataset);
+    }
+    
+    renderHighQualityFrame(wordData, frameIndex) {
+        const frame = wordData.frames[frameIndex];
+        if (!frame || !frame.hand_landmarks) return;
+        
+        // Draw hand landmarks from real dataset
+        this.drawHandLandmarks(frame.hand_landmarks, '#4ecdc4', 'Real Data');
+        
+        // Draw movement trails for better visualization
+        if (frameIndex > 0) {
+            this.drawMovementTrail(wordData.frames, frameIndex);
+        }
+        
+        // Show handshape if available
+        if (frame.handshape) {
+            this.drawHandshapeLabel(frame.handshape);
+        }
+    }
+    
+    renderMediumQualityFrame(wordData, frameIndex) {
+        // Use linguistic properties to render informed animation
+        const properties = wordData.linguistic_properties;
+        if (!properties) return;
+        
+        // Generate position based on movement and location
+        const position = this.calculatePositionFromProperties(properties, frameIndex, wordData.frame_count);
+        
+        // Draw hand position
+        this.drawHandPosition(position.x, position.y, '#ff9800', 'Linguistic');
+        
+        // Show complexity indicator
+        if (properties.complexity) {
+            this.drawComplexityIndicator(properties.complexity);
+        }
+    }
+    
+    renderFingerspellingFrame(wordData, frameIndex) {
+        const lettersPerFrame = Math.floor(wordData.frame_count / wordData.letters.length);
+        const currentLetterIndex = Math.floor(frameIndex / lettersPerFrame);
+        const currentLetter = wordData.letters[currentLetterIndex];
+        
+        if (!currentLetter) return;
+        
+        // Draw fingerspelling position
+        this.drawFingerspellingLetter(currentLetter, frameIndex % lettersPerFrame, lettersPerFrame);
+        
+        // Show letter sequence progress
+        this.drawLetterProgress(wordData.letters, currentLetterIndex);
+    }
+    
+    renderBasicFrame(wordData, frameIndex) {
+        // Basic animation based on available data
+        const movement = wordData.movement || 'static';
+        const location = wordData.location || 'neutral';
+        
+        const position = this.getBasicPosition(movement, location, frameIndex, wordData.frame_count);
+        this.drawHandPosition(position.x, position.y, '#9e9e9e', 'Basic');
+    }
+    
+    drawHandLandmarks(landmarks, color, label) {
+        this.ctx.strokeStyle = color;
+        this.ctx.fillStyle = color;
+        this.ctx.lineWidth = 2;
+        
+        landmarks.forEach((landmark, index) => {
+            const x = landmark.x * this.canvas.width;
+            const y = landmark.y * this.canvas.height;
+            
+            // Draw landmark point
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            this.ctx.fill();
+            
+            // Draw connections between landmarks (simplified hand structure)
+            if (index > 0 && index % 4 !== 1) { // Connect fingers
+                const prevLandmark = landmarks[index - 1];
+                const prevX = prevLandmark.x * this.canvas.width;
+                const prevY = prevLandmark.y * this.canvas.height;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(prevX, prevY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+        });
+        
+        // Label the data source
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = '10px Arial';
+        this.ctx.fillText(label, this.canvas.width - 40, 15);
+    }
+    
+    drawMovementTrail(frames, currentFrameIndex) {
+        if (currentFrameIndex < 3) return;
+        
+        this.ctx.strokeStyle = 'rgba(78, 205, 196, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        
+        for (let i = Math.max(0, currentFrameIndex - 10); i < currentFrameIndex; i++) {
+            const frame = frames[i];
+            if (frame && frame.hand_landmarks && frame.hand_landmarks[0]) {
+                const landmark = frame.hand_landmarks[0];
+                const x = landmark.x * this.canvas.width;
+                const y = landmark.y * this.canvas.height;
+                
+                if (i === Math.max(0, currentFrameIndex - 10)) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+        }
+        
+        this.ctx.stroke();
+    }
+    
+    drawHandPosition(x, y, color, label) {
+        const canvasX = x * this.canvas.width;
+        const canvasY = y * this.canvas.height;
+        
+        // Draw hand position
+        this.ctx.fillStyle = color;
+        this.ctx.beginPath();
+        this.ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // Draw hand outline
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(canvasX, canvasY, 15, 0, 2 * Math.PI);
+        this.ctx.stroke();
+        
+        // Label
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = '10px Arial';
+        this.ctx.fillText(label, this.canvas.width - 40, 15);
+    }
+    
+    drawFingerspellingLetter(letter, frameInLetter, totalFramesForLetter) {
+        const x = 0.65 * this.canvas.width;
+        const y = 0.5 * this.canvas.height;
+        
+        // Draw letter
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = 'bold 24px Arial';
+        this.ctx.fillText(letter, x, y);
+        
+        // Draw fingerspelling indicator
+        this.ctx.strokeStyle = '#ff5722';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y + 20, 10, 0, 2 * Math.PI);
+        this.ctx.stroke();
+        
+        // Animate the letter appearance
+        const opacity = Math.sin((frameInLetter / totalFramesForLetter) * Math.PI);
+        this.ctx.globalAlpha = opacity;
+        this.ctx.fillStyle = '#ff5722';
+        this.ctx.font = '12px Arial';
+        this.ctx.fillText('Fingerspelling', x, y + 40);
+        this.ctx.globalAlpha = 1.0;
+    }
+    
+    drawLetterProgress(letters, currentIndex) {
+        const startX = 10;
+        const y = this.canvas.height - 20;
+        
+        this.ctx.font = '10px Arial';
+        
+        letters.forEach((letter, index) => {
+            const x = startX + (index * 15);
+            
+            if (index === currentIndex) {
+                this.ctx.fillStyle = '#ff5722';
+                this.ctx.font = 'bold 12px Arial';
+            } else if (index < currentIndex) {
+                this.ctx.fillStyle = '#4caf50';
+                this.ctx.font = '10px Arial';
+            } else {
+                this.ctx.fillStyle = '#cccccc';
+                this.ctx.font = '10px Arial';
+            }
+            
+            this.ctx.fillText(letter, x, y);
+        });
+    }
+    
+    calculatePositionFromProperties(properties, frameIndex, totalFrames) {
+        const progress = frameIndex / totalFrames;
+        const baseX = 0.5;
+        const baseY = 0.5;
+        
+        // Modify position based on movement type
+        const movement = properties.movement || '';
+        let x = baseX;
+        let y = baseY;
+        
+        if (movement.includes('circular')) {
+            const angle = progress * 2 * Math.PI;
+            x = baseX + 0.1 * Math.cos(angle);
+            y = baseY + 0.1 * Math.sin(angle);
+        } else if (movement.includes('forward')) {
+            x = baseX + (progress * 0.2);
+        } else if (movement.includes('up')) {
+            y = baseY - (progress * 0.2);
+        }
+        
+        return { x, y };
+    }
+    
+    getBasicPosition(movement, location, frameIndex, totalFrames) {
+        const progress = frameIndex / totalFrames;
+        let baseX = 0.5, baseY = 0.5;
+        
+        // Adjust base position by location
+        if (location.includes('chest')) baseY = 0.6;
+        if (location.includes('head')) baseY = 0.3;
+        if (location.includes('side')) baseX = 0.7;
+        
+        // Apply movement
+        let x = baseX, y = baseY;
+        if (movement === 'wave') {
+            x = baseX + 0.05 * Math.sin(progress * Math.PI * 4);
+        } else if (movement === 'circular') {
+            const angle = progress * 2 * Math.PI;
+            x = baseX + 0.05 * Math.cos(angle);
+            y = baseY + 0.05 * Math.sin(angle);
+        }
+        
+        return { x, y };
+    }
+    
+    renderCurrentWord(word, dataset) {
+        // Word display
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(word, this.canvas.width / 2, this.canvas.height - 40);
+        
+        // Dataset source
+        this.ctx.fillStyle = '#666666';
+        this.ctx.font = '10px Arial';
+        this.ctx.fillText(`Source: ${dataset}`, this.canvas.width / 2, this.canvas.height - 25);
+    }
+    
+    renderProgressIndicator() {
+        const progress = this.frameIndex / this.totalFrames;
+        const barWidth = this.canvas.width - 20;
+        const barHeight = 3;
+        const x = 10;
+        const y = this.canvas.height - 10;
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.fillRect(x, y, barWidth, barHeight);
+        
+        // Progress
+        this.ctx.fillStyle = '#4ecdc4';
+        this.ctx.fillRect(x, y, barWidth * progress, barHeight);
+    }
+    
+    renderError() {
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = '14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('⚠️ Avatar Error', this.canvas.width / 2, this.canvas.height / 2 - 10);
+        this.ctx.font = '12px Arial';
+        this.ctx.fillText('Check dataset connection', this.canvas.width / 2, this.canvas.height / 2 + 10);
+    }
+    
+    renderFallback() {
+        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('🤟 ASL Avatar Loading...', this.canvas.width / 2, this.canvas.height / 2);
+    }
+}
+
+// Rest of the content.js remains the same for DOM manipulation
 document.addEventListener('signAvatarSettingsChanged', (event) => {
     settings = event.detail;
 
@@ -19,15 +608,12 @@ document.addEventListener('signAvatarSettingsChanged', (event) => {
         removeAvatar();
     }
 
-    //Will apply visual settings if avatar exists
     if (avatarDiv) {
         applyAvatarStyles();
     }
 });
 
-//Initializes after the page loads
 function initialize() {
-    //Helps to see if we are on a YouTube video page
     const videoId = new URLSearchParams(window.location.search).get("v");
     if (!videoId) return;
 
@@ -41,7 +627,6 @@ function initialize() {
     }, (items)=> {
         settings = items;
 
-        //This will create avatar if both auto-start and extension is active
         if (settings.active && settings.autoStart) {
             createAvatar();
         }
@@ -53,169 +638,154 @@ function initialize() {
 async function createAvatar() {
     if (isAvatarDisplayed) return;
     
-    //Makes sure there's a YouTube video ID in the URL
     const videoId = new URLSearchParams(window.location.search).get("v");
     if (!videoId) return;
     
     try {
         avatarDiv = document.createElement("div");
         avatarDiv.id = 'sign-avatar-cc';
-        avatarDiv.style.position = 'fixed';//Ensures that it remains fixed even when scrolling
+        avatarDiv.style.position = 'fixed';
         avatarDiv.style.bottom = '80px';
         avatarDiv.style.right = '20px';
         avatarDiv.style.background= "rgba(255,255,255,0.9)";
         avatarDiv.style.padding= '15px';
         avatarDiv.style.borderRadius = '8px';
         avatarDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.30)';
-        avatarDiv.style.zIndex = '9999';//Ensures that the cc remains on top of everything
+        avatarDiv.style.zIndex = '9999';
         avatarDiv.style.maxWidth = '350px';
         avatarDiv.style.transition = 'all 0.2s ease';
 
-        //Indicator to show that it is loading
         avatarDiv.innerHTML = `<div style= 'display: flex; align-items: center;'>
-            <span style = 'font-weight: bold; margin-right: 10px;'>Sign CC</span>
+            <span style = 'font-weight: bold; margin-right: 10px;'>Sign CC (Dataset Mode)</span>
             <div class = 'loading-spinner' style='width: 16px; height: 16px; border: 2px solid #ccc;
             border-top-color: #2d72d9; border-radius: 50%; animation: spin 1s linear infinite;'></div>
         </div>
-        <p style='margin-top: 10px; font-size: 16px;'>Loading Sign CC</p>`;
+        <p style='margin-top: 10px; font-size: 14px;'>Loading real ASL dataset...</p>`;
 
         const style = document.createElement('style');
-        style.textContent = `
-        @keyframes spin{
-            to{transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);//Ensures that any element on the page can use the spin animation
-    document.body.appendChild(avatarDiv);//This attaches the CC box onto the page
-    isAvatarDisplayed = true;
+        style.textContent = `@keyframes spin{ to{transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+        document.body.appendChild(avatarDiv);
+        isAvatarDisplayed = true;
 
-    applyAvatarStyles();
-    
-    //To add to this later, for now a random localhost of say 5000
-    const response = await fetch("http://localhost:5000/transcribe", {
-        method: "POST",
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({videoId})
-    });
-    
-    if (!response.ok){
-        throw new Error(`Server Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    //After loading transcript data, will be replaced with the actual content
-    if (avatarDiv){
-        avatarDiv.innerHTML = `
-        <div style='display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 10px;'>
-            <span style='font-weight: bold;'>ASL Captions</span>
-            <button id='close-avatar' style='background: none;
-            border: none; cursor: pointer; font-size: 16px;'>×</button>
-        </div>
-        <div id="asl-captions-container" style='max-height: 200px; overflow-y: auto;'></div>
-        `;
-
-        const captionsContainer = document.getElementById('asl-captions-container');
+        applyAvatarStyles();
         
-        // Check if we have ASL segments
-        if (data.asl_segments && data.asl_segments.length > 0) {
-            // Process each segment
-            for (const segment of data.asl_segments) {
-                const captionDiv = document.createElement('div');
-                captionDiv.className = 'asl-caption';
-                captionDiv.style.marginBottom = '12px';
-                captionDiv.style.paddingBottom = '8px';
-                captionDiv.style.borderBottom = '1px solid rgba(0,0,0,0.1)';
-                
-                // Format timestamp if available so that we can link cc to video audio
-                let timestampHtml = '';
-                if (segment.start !== undefined && segment.end !== undefined) {
-                    const formatTime = (time) => {
-                        const minutes = Math.floor(time / 60);
-                        const seconds = Math.floor(time % 60);
-                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                    };
-                    
-                    timestampHtml = `
-                    <div style="font-size: 0.8em; color: #888; margin-bottom: 3px;">
-                        ${formatTime(segment.start)} - ${formatTime(segment.end)}
-                    </div>`;
-                    
-                    // Store timestamps as data attributes for sync feature
-                    captionDiv.dataset.start = segment.start;
-                    captionDiv.dataset.end = segment.end;
-                }
-                
-                // Adds thre ASL gloss text
-                captionDiv.innerHTML = `
-                    ${timestampHtml}
-                    <div class="asl-text" style="font-weight: bold; color: #2d72d9; margin-bottom: 4px; font-size: 1.1em;">
-                        ${segment.asl_gloss}
-                    </div>
-                    <div class="english-text" style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
-                        ${segment.english}
-                    </div>
-                    <div class="sign-avatar-container" style="width: 100%; height: ${settings.avatarSize}px; border-radius: 8px; overflow: hidden; margin-top: 10px; display: none; background: #f5f5f5; position: relative;">
-                        <p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Loading sign avatar...</p>
-                    </div>
-                `;
-                
-                captionsContainer.appendChild(captionDiv);
-                
-                // Only generate avatar if setting is enabled
-                if (settings.showAvatar) {
-                    // Get the avatar container
-                    const avatarContainer = captionDiv.querySelector('.sign-avatar-container');
-                    avatarContainer.style.display = 'block';
-                    
-                    // Generate the avatar animation for this segment
-                    generateAvatarForSegment(segment.asl_gloss, avatarContainer);
-                }
-            }
-        } else {
-            captionsContainer.innerHTML = '<p>ASL translation is unavailable</p>';
-        }
-
-        document.getElementById('close-avatar').addEventListener('click', ()=> {
-            removeAvatar();
-            settings.active = false;
-            chrome.storage.sync.set({active: false});
+        const response = await fetch("http://localhost:5000/transcribe", {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({videoId})
         });
         
-        // Make the caption box draggable
-        makeAvatarDraggable();
+        if (!response.ok){
+            throw new Error(`Server Error: ${response.status}`);
+        }
         
-        // Add video sync functionality
-        syncCaptionsWithVideo();
-    }
+        const data = await response.json();
+        
+        if (avatarDiv){
+            avatarDiv.innerHTML = `
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
+                <span style='font-weight: bold;'>ASL Captions (Real Datasets)</span>
+                <button id='close-avatar' style='background: none; border: none; cursor: pointer; font-size: 16px;'>×</button>
+            </div>
+            <div id="asl-captions-container" style='max-height: 200px; overflow-y: auto;'></div>
+            `;
+
+            const captionsContainer = document.getElementById('asl-captions-container');
+            
+            if (data.asl_segments && data.asl_segments.length > 0) {
+                for (const segment of data.asl_segments) {
+                    const captionDiv = document.createElement('div');
+                    captionDiv.className = 'asl-caption';
+                    captionDiv.style.marginBottom = '12px';
+                    captionDiv.style.paddingBottom = '8px';
+                    captionDiv.style.borderBottom = '1px solid rgba(0,0,0,0.1)';
+                    
+                    let timestampHtml = '';
+                    if (segment.start !== undefined && segment.end !== undefined) {
+                        const formatTime = (time) => {
+                            const minutes = Math.floor(time / 60);
+                            const seconds = Math.floor(time % 60);
+                            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        };
+                        
+                        timestampHtml = `
+                        <div style="font-size: 0.8em; color: #888; margin-bottom: 3px;">
+                            ${formatTime(segment.start)} - ${formatTime(segment.end)}
+                        </div>`;
+                        
+                        captionDiv.dataset.start = segment.start;
+                        captionDiv.dataset.end = segment.end;
+                    }
+                    
+                    captionDiv.innerHTML = `
+                        ${timestampHtml}
+                        <div class="asl-text" style="font-weight: bold; color: #2d72d9; margin-bottom: 4px; font-size: 1.1em;">
+                            ${segment.asl_gloss}
+                        </div>
+                        <div class="english-text" style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
+                            ${segment.english}
+                        </div>
+                        <div class="dataset-avatar-container" style="width: 100%; height: ${settings.avatarSize}px; border-radius: 8px; overflow: hidden; margin-top: 10px; display: none; background: #f5f5f5; position: relative;">
+                            <p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Loading dataset avatar...</p>
+                        </div>
+                    `;
+                    
+                    captionsContainer.appendChild(captionDiv);
+                    
+                    if (settings.showAvatar) {
+                        const avatarContainer = captionDiv.querySelector('.dataset-avatar-container');
+                        avatarContainer.style.display = 'block';
+                        
+                        generateDatasetAvatarForSegment(segment.asl_gloss, avatarContainer);
+                    }
+                }
+            } else {
+                captionsContainer.innerHTML = '<p>ASL translation unavailable</p>';
+            }
+
+            document.getElementById('close-avatar').addEventListener('click', ()=> {
+                removeAvatar();
+                settings.active = false;
+                chrome.storage.sync.set({active: false});
+            });
+            
+            makeAvatarDraggable();
+            syncCaptionsWithVideo();
+        }
     } catch (error) {
-        console.error("There was a problem with the CC:", error);
+        console.error("Error with dataset CC:", error);
     
-    //Error message if there is a problem
-    if (avatarDiv) {
-        avatarDiv.innerHTML = `
-        <div style='display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 10px;'>
-            <span style='font-weight: bold;'>Sign CC</span>
-            <button id='close-avatar' style='background: none;
-            border: none; cursor: pointer; font-size: 16px;'>×</button>
-        </div>
-        <p style='color: red; margin-top: 10px;'>Sign language loading failed. Try again.</p>
-     `;
-     document.getElementById('close-avatar').addEventListener('click', removeAvatar);
+        if (avatarDiv) {
+            avatarDiv.innerHTML = `
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
+                <span style='font-weight: bold;'>Sign CC</span>
+                <button id='close-avatar' style='background: none; border: none; cursor: pointer; font-size: 16px;'>×</button>
+            </div>
+            <p style='color: red; margin-top: 10px;'>Dataset loading failed. Check backend connection.</p>
+         `;
+         document.getElementById('close-avatar').addEventListener('click', removeAvatar);
+        }
     }
-}
 }
 
-// Function to generate avatar animation for a segment
-async function generateAvatarForSegment(aslGloss, containerElement) {
+async function generateDatasetAvatarForSegment(aslGloss, containerElement) {
     try {
-        // Call the backend to generate the animation
+        // Check cache first
+        if (animationCache.has(aslGloss)) {
+            const cachedData = animationCache.get(aslGloss);
+            renderCachedAvatar(cachedData, containerElement);
+            return;
+        }
+
+        // Call the backend to generate the animation using real datasets
         const response = await fetch("http://localhost:5000/generate-avatar", {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({asl_gloss: aslGloss})
+            body: JSON.stringify({
+                asl_gloss: aslGloss,
+                method: 'dataset'
+            })
         });
         
         if (!response.ok) {
@@ -225,83 +795,145 @@ async function generateAvatarForSegment(aslGloss, containerElement) {
         const data = await response.json();
         
         if (data.success) {
-            // Since no Avatar now, placeholder
-            containerElement.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 10px;">
-                    <div style="font-size: 24px; margin-bottom: 8px;">🤟</div>
-                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">ASL AVATAR</div>
-                    <div style="font-size: 12px; opacity: 0.9;">${aslGloss}</div>
-                    <div style="font-size: 10px; opacity: 0.7; margin-top: 8px;">Coming Soon!</div>
-                </div>
-            `;
+            // Cache the animation data
+            animationCache.set(aslGloss, data);
             
-            containerElement.style.cursor = 'pointer';
-            containerElement.addEventListener('click', () => {
-                // For now, just highlight the text
-                containerElement.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    containerElement.style.transform = 'scale(1)';
-                }, 150);
-            });
+            // Create and initialize the dataset avatar renderer
+            const renderer = new DatasetAvatarRenderer(containerElement, settings.avatarSize);
             
-            // Adds hover effect
-            containerElement.addEventListener('mouseenter', () => {
-                containerElement.style.opacity = '0.8';
-            });
-            containerElement.addEventListener('mouseleave', () => {
-                containerElement.style.opacity = '1';
-            });
+            // Load the real dataset animation
+            await renderer.loadAnimation(data.data);
+            
+            // Store renderer for later control
+            currentAvatarAnimations.set(aslGloss, renderer);
+            
+            // Auto-play the animation
+            setTimeout(() => {
+                renderer.play();
+            }, 500);
+            
+            // Add dataset info display
+            addDatasetInfo(containerElement, data);
+            
         } else {
-            containerElement.innerHTML = '<p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Avatar generation failed</p>';
+            renderAvatarError(containerElement, "Dataset generation failed");
         }
     } catch (error) {
-        console.error("Error generating avatar:", error);
-        containerElement.innerHTML = '<p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Avatar connection failed</p>';
+        console.error("Error generating dataset avatar:", error);
+        renderAvatarError(containerElement, "Connection to dataset backend failed");
     }
 }
 
+function renderCachedAvatar(cachedData, containerElement) {
+    const renderer = new DatasetAvatarRenderer(containerElement, settings.avatarSize);
+    renderer.loadAnimation(cachedData.data).then(() => {
+        renderer.play();
+    });
+    
+    addDatasetInfo(containerElement, cachedData);
+}
+
+function addDatasetInfo(containerElement, avatarData) {
+    // Add dataset information overlay
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'dataset-info';
+    infoDiv.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        cursor: pointer;
+        transition: opacity 0.3s;
+    `;
+    
+    const method = avatarData.method || 'unknown';
+    const dataSource = avatarData.data?.data_source || 'unknown';
+    
+    infoDiv.innerHTML = `📊 ${method}`;
+    infoDiv.title = `Data source: ${dataSource}\nLibraries: ${avatarData.libraries_used?.join(', ') || 'unknown'}`;
+    
+    // Show/hide on hover
+    containerElement.addEventListener('mouseenter', () => {
+        infoDiv.style.opacity = '1';
+    });
+    containerElement.addEventListener('mouseleave', () => {
+        infoDiv.style.opacity = '0.7';
+    });
+    
+    containerElement.appendChild(infoDiv);
+}
+
+function renderAvatarError(containerElement, errorMessage) {
+    containerElement.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; text-align: center; padding: 10px;">
+            <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 4px;">Dataset Error</div>
+            <div style="font-size: 10px; opacity: 0.9;">${errorMessage}</div>
+        </div>
+    `;
+}
+
 function syncCaptionsWithVideo() {
-    // Find the YouTube video element
     const video = document.querySelector('video');
     if (!video || !avatarDiv) return;
     
-    // Function to update visible captions based on current video time
     const updateCaptions = () => {
         const currentTime = video.currentTime;
         const captions = avatarDiv.querySelectorAll('.asl-caption');
         let foundActiveCaption = false;
         
         captions.forEach(caption => {
-            // Skip captions without timestamps
             if (!caption.dataset.start || !caption.dataset.end) return;
             
             const startTime = parseFloat(caption.dataset.start);
             const endTime = parseFloat(caption.dataset.end);
             
-            // Show/hide caption based on current time
             if (currentTime >= startTime && currentTime <= endTime) {
                 caption.style.display = 'block';
                 caption.style.backgroundColor = 'rgba(45, 114, 217, 0.1)';
+                caption.style.border = '2px solid rgba(45, 114, 217, 0.3)';
                 foundActiveCaption = true;
                 
-                // Auto-scroll to this caption
+                // Auto-play avatar animation for current caption
+                const aslText = caption.querySelector('.asl-text').textContent;
+                const renderer = currentAvatarAnimations.get(aslText);
+                if (renderer && !renderer.isPlaying) {
+                    renderer.reset();
+                    renderer.play();
+                }
+                
                 caption.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
-                caption.style.display = 'block';
+                caption.style.display = settings.showAllCaptions ? 'block' : 'none';
                 caption.style.backgroundColor = 'transparent';
+                caption.style.border = 'none';
             }
         });
+        
+        // If no active caption, show all if setting enabled
+        if (!foundActiveCaption && settings.showAllCaptions) {
+            captions.forEach(caption => {
+                caption.style.display = 'block';
+            });
+        }
     };
     
-    // Update captions on timeupdate event (fires several times per second during playback)
     video.addEventListener('timeupdate', updateCaptions);
-    
-    // Store the event in avatarDiv's dataset to allow cleanup later
     avatarDiv.dataset.hasTimeSync = 'true';
 }
 
 function removeAvatar() {
     if (avatarDiv) {
+        // Clean up all avatar renderers
+        currentAvatarAnimations.forEach(renderer => {
+            renderer.pause();
+        });
+        currentAvatarAnimations.clear();
+        
         avatarDiv.remove();
         avatarDiv = null;
         isAvatarDisplayed = false;
@@ -311,65 +943,111 @@ function removeAvatar() {
 function applyAvatarStyles() {
     if (!avatarDiv) return;
 
-    //Activates high contrast if user sets it
     if (settings.highContrast){
         avatarDiv.style.background = '#000000';
         avatarDiv.style.color = '#ffffff';
         avatarDiv.style.border = '2px solid #ffffff';
         
-        // Update text colors for high contrast
         const aslTexts = avatarDiv.querySelectorAll('.asl-text');
         aslTexts.forEach(text => {
-            text.style.color = '#4da6ff'; // Brighter blue for dark background
+            text.style.color = '#4da6ff';
         });
     } else{
         avatarDiv.style.background = 'rgba(255,255,255,0.9)';
         avatarDiv.style.color = '#000000';
         avatarDiv.style.border = 'none';
         
-        // Restore default text colors
         const aslTexts = avatarDiv.querySelectorAll('.asl-text');
         aslTexts.forEach(text => {
-            text.style.color = '#2d72d9'; // Original blue
+            text.style.color = '#2d72d9';
         });
     }
     
     // Apply avatar-specific settings
-    const avatarContainers = avatarDiv.querySelectorAll('.sign-avatar-container');
+    const avatarContainers = avatarDiv.querySelectorAll('.dataset-avatar-container');
     avatarContainers.forEach(container => {
-        // Show/hide based on settings
         container.style.display = settings.showAvatar ? 'block' : 'none';
-        
-        // Apply size
         container.style.height = `${settings.avatarSize}px`;
+        
+        // Update canvas size for existing renderers
+        const canvas = container.querySelector('canvas');
+        if (canvas) {
+            canvas.width = settings.avatarSize;
+            canvas.height = settings.avatarSize;
+            canvas.style.background = settings.highContrast ? '#000000' : '#f0f8ff';
+        }
     });
+    
+    // Apply ASL-only mode
+    if (settings.aslOnly) {
+        const englishTexts = avatarDiv.querySelectorAll('.english-text');
+        englishTexts.forEach(text => {
+            text.style.display = 'none';
+        });
+    } else {
+        const englishTexts = avatarDiv.querySelectorAll('.english-text');
+        englishTexts.forEach(text => {
+            text.style.display = 'block';
+        });
+    }
+    
+    // Apply fingerspelling highlighting
+    if (settings.highlightFingerspelling) {
+        const aslTexts = avatarDiv.querySelectorAll('.asl-text');
+        aslTexts.forEach(text => {
+            const words = text.textContent.split(' ');
+            const highlightedWords = words.map(word => {
+                // Highlight words that are likely fingerspelled (all caps, not common ASL words)
+                const commonASLWords = ['I', 'YOU', 'ME', 'HELLO', 'THANK-YOU', 'GOOD', 'BAD', 'YES', 'NO'];
+                if (word.length > 2 && !commonASLWords.includes(word)) {
+                    return `<span style="background: rgba(255, 152, 0, 0.3); padding: 2px 4px; border-radius: 3px;" title="Likely fingerspelled">${word}</span>`;
+                }
+                return word;
+            });
+            text.innerHTML = highlightedWords.join(' ');
+        });
+    }
 }
 
 function setUpPipObserver(){
-    //For now it only logs info need to add more codes for it to work
     document.addEventListener('enterpictureinpicture', (event) => {
         if (settings.pipMode && settings.active) {
             const pipWindow = event.pictureInPictureWindow;
             console.log("In PiP Mode, size:", pipWindow.width, pipWindow.height);
             
-            // Adjust avatar for PiP mode
             if (avatarDiv) {
                 avatarDiv.style.position = 'fixed';
-                avatarDiv.style.zIndex = '2147483647'; // Highest possible z-index
+                avatarDiv.style.zIndex = '2147483647';
                 avatarDiv.style.bottom = '10px';
                 avatarDiv.style.right = '10px';
                 avatarDiv.style.maxWidth = '200px';
                 avatarDiv.style.fontSize = '12px';
+                
+                // Resize avatar renderers for PiP
+                currentAvatarAnimations.forEach(renderer => {
+                    if (renderer.canvas) {
+                        renderer.canvas.width = 100;
+                        renderer.canvas.height = 100;
+                    }
+                });
             }
         }
     });
+    
     document.addEventListener('leavepictureinpicture', () => {
         console.log("Exited PiP Mode");
         
-        // Reset avatar styling when leaving PiP
         if (avatarDiv) {
             avatarDiv.style.maxWidth = '350px';
             avatarDiv.style.fontSize = '';
+            
+            // Restore avatar renderer sizes
+            currentAvatarAnimations.forEach(renderer => {
+                if (renderer.canvas) {
+                    renderer.canvas.width = settings.avatarSize;
+                    renderer.canvas.height = settings.avatarSize;
+                }
+            });
         }
     });
 }
@@ -380,18 +1058,17 @@ function makeAvatarDraggable() {
     let isDragging = false;
     let offsetX, offsetY;
     
-    //Need to add a draggable header to create a draggable area
-    const header = avatarDiv.querySelector('div'); // Use the existing header div
+    const header = avatarDiv.querySelector('div');
     if (!header) return;
     
     header.style.cursor = 'move';
-    header.style.userSelect = 'none'; // Prevent text selection while dragging
+    header.style.userSelect = 'none';
     
     header.addEventListener('mousedown', (e)=>{
         isDragging = true;
-        offsetX = e.clientX - avatarDiv.getBoundingClientRect().left;//Offsets mouse position and top-left corner of avatar
+        offsetX = e.clientX - avatarDiv.getBoundingClientRect().left;
         offsetY = e.clientY - avatarDiv.getBoundingClientRect().top;
-        e.preventDefault(); // Prevent text selection
+        e.preventDefault();
     });
     
     document.addEventListener('mousemove', (e)=>{
@@ -407,11 +1084,118 @@ function makeAvatarDraggable() {
     });
 }
 
+// Performance optimization: Debounce avatar generation
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Debounced avatar generation for better performance
+const debouncedAvatarGeneration = debounce(generateDatasetAvatarForSegment, 300);
+
+// Add keyboard shortcuts for avatar control
+document.addEventListener('keydown', (e) => {
+    if (!avatarDiv || !settings.active) return;
+    
+    // Only process if not typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    switch(e.key) {
+        case 'a':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                // Toggle all avatar animations
+                currentAvatarAnimations.forEach(renderer => {
+                    if (renderer.isPlaying) {
+                        renderer.pause();
+                    } else {
+                        renderer.play();
+                    }
+                });
+            }
+            break;
+        case 'r':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                // Reset all avatar animations
+                currentAvatarAnimations.forEach(renderer => {
+                    renderer.reset();
+                });
+            }
+            break;
+        case 'h':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                // Toggle high contrast
+                settings.highContrast = !settings.highContrast;
+                applyAvatarStyles();
+                chrome.storage.sync.set({highContrast: settings.highContrast});
+            }
+            break;
+    }
+});
+
+// Initialize everything
 initialize();
+
+// Handle YouTube navigation (single-page app)
 let lastURL = location.href;
 new MutationObserver(()=>{
     if (location.href !== lastURL){
         lastURL = location.href;
-        setTimeout(initialize,1000);
+        
+        // Clean up existing avatars and cache
+        removeAvatar();
+        animationCache.clear();
+        
+        // Reinitialize after navigation
+        setTimeout(initialize, 1000);
     }
 }).observe(document, {subtree:true, childList:true});
+
+// Add CSS for enhanced animations
+const enhancedStyles = document.createElement('style');
+enhancedStyles.textContent = `
+    .asl-caption {
+        transition: all 0.3s ease;
+    }
+    
+    .asl-caption:hover {
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dataset-avatar-container {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .dataset-avatar-container:hover {
+        border-color: rgba(45, 114, 217, 0.3);
+        box-shadow: 0 4px 12px rgba(45, 114, 217, 0.2);
+    }
+    
+    .avatar-controls button:hover {
+        transform: scale(1.1);
+    }
+    
+    @keyframes datasetPulse {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1.0; }
+    }
+    
+    .dataset-info {
+        animation: datasetPulse 2s infinite;
+    }
+`;
+document.head.appendChild(enhancedStyles);
+
+console.log('🤟 Sign Avatar CC (Dataset Mode) loaded successfully!');
+console.log('Features: Real ASL datasets, MediaPipe rendering, animation caching, keyboard shortcuts');
