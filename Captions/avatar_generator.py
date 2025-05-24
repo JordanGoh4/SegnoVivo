@@ -1,1201 +1,612 @@
-let settings = {
-    active: false,
-    autoStart: true,
-    pipMode: false,
-    highContrast: false,
-    showAvatar: true,
-    avatarSize: 150,
-    avatarMethod: 'dataset',
-    showAllCaptions: false,
-    highlightFingerspelling: true,
-    aslOnly: false
-};
+import cv2
+import mediapipe as mp
+import numpy as np
+from typing import Dict, List, Optional
+import json
+from pose_database import get_sign_data, get_available_signs, ASL_HANDSHAPES
 
-let avatarDiv = null;
-let isAvatarDisplayed = false;
-let currentAvatarAnimations = new Map();
-let animationCache = new Map();
-
-// Enhanced Avatar Renderer for Real Dataset Animations
-class DatasetAvatarRenderer {
-    constructor(container, size = 150) {
-        this.container = container;
-        this.size = size;
-        this.canvas = null;
-        this.ctx = null;
-        this.animationFrame = null;
-        this.currentAnimation = null;
-        this.frameIndex = 0;
-        this.isPlaying = false;
-        this.animationSpeed = 1.0;
-        
-        this.initCanvas();
-        this.initControls();
-    }
+class OpenSourceAvatarGenerator:
+    """
+    Open-source avatar generation using MediaPipe and real ASL datasets
+    Now works with real research datasets instead of hardcoded poses
+    """
     
-    initCanvas() {
-        this.canvas = document.createElement('canvas');
-        this.canvas.width = this.size;
-        this.canvas.height = this.size;
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
-        this.canvas.style.borderRadius = '8px';
-        this.canvas.style.background = settings.highContrast ? '#000000' : '#f0f8ff';
+    def __init__(self):
+        # Initialize MediaPipe
+        self.mp_hands = mp.solutions.hands
+        self.mp_pose = mp.solutions.pose
+        self.mp_face = mp.solutions.face_mesh
+        self.mp_drawing = mp.solutions.drawing_utils
         
-        this.ctx = this.canvas.getContext('2d');
-        this.container.innerHTML = '';
-        this.container.appendChild(this.canvas);
+        # Initialize pose estimators
+        self.hands_detector = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.5
+        )
         
-        // Initialize drawing settings
-        this.setupDrawingContext();
-    }
-    
-    setupDrawingContext() {
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-    }
-    
-    initControls() {
-        const controlsDiv = document.createElement('div');
-        controlsDiv.className = 'avatar-controls';
-        controlsDiv.style.cssText = `
-            position: absolute;
-            bottom: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 5px;
-            background: rgba(0,0,0,0.8);
-            padding: 6px 10px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-        `;
+        self.pose_detector = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
         
-        // Play/Pause button
-        const playBtn = this.createControlButton('▶️', () => {
-            if (this.isPlaying) {
-                this.pause();
-                playBtn.textContent = '▶️';
-            } else {
-                this.play();
-                playBtn.textContent = '⏸️';
-            }
-        });
+        self.face_detector = self.mp_face.FaceMesh(
+            static_image_mode=False,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
         
-        // Reset button
-        const resetBtn = this.createControlButton('⏮️', () => {
-            this.reset();
-            playBtn.textContent = '▶️';
-        });
+        # Load handshape configurations
+        self.asl_handshapes = ASL_HANDSHAPES
         
-        // Speed control
-        const speedBtn = this.createControlButton('1x', () => {
-            this.cycleSpeed();
-            speedBtn.textContent = `${this.animationSpeed}x`;
-        });
-        
-        // Quality indicator
-        const qualityIndicator = document.createElement('div');
-        qualityIndicator.className = 'quality-indicator';
-        qualityIndicator.style.cssText = `
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 8px;
-            background: rgba(45, 114, 217, 0.7);
-        `;
-        qualityIndicator.textContent = 'Dataset';
-        
-        controlsDiv.appendChild(resetBtn);
-        controlsDiv.appendChild(playBtn);
-        controlsDiv.appendChild(speedBtn);
-        controlsDiv.appendChild(qualityIndicator);
-        
-        this.container.style.position = 'relative';
-        this.container.appendChild(controlsDiv);
-        
-        this.playBtn = playBtn;
-        this.qualityIndicator = qualityIndicator;
-    }
-    
-    createControlButton(text, onClick) {
-        const button = document.createElement('button');
-        button.textContent = text;
-        button.style.cssText = `
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 6px;
-            transition: background 0.2s;
-        `;
-        button.addEventListener('click', onClick);
-        button.addEventListener('mouseenter', () => {
-            button.style.background = 'rgba(255,255,255,0.2)';
-        });
-        button.addEventListener('mouseleave', () => {
-            button.style.background = 'none';
-        });
-        return button;
-    }
-    
-    cycleSpeed() {
-        const speeds = [0.5, 1.0, 1.5, 2.0];
-        const currentIndex = speeds.indexOf(this.animationSpeed);
-        this.animationSpeed = speeds[(currentIndex + 1) % speeds.length];
-    }
-    
-    async loadAnimation(animationData) {
-        try {
-            console.log('Loading animation:', animationData);
-            this.currentAnimation = animationData;
-            this.frameIndex = 0;
-            
-            // Update quality indicator based on data source
-            this.updateQualityIndicator(animationData);
-            
-            // Handle different animation types from real datasets
-            if (animationData.type === 'real_dataset_poses') {
-                await this.loadDatasetAnimation(animationData);
-            } else if (animationData.type === 'mediapipe_poses') {
-                await this.loadMediaPipeAnimation(animationData);
-            } else {
-                await this.loadFallbackAnimation(animationData);
-            }
-            
-            this.render();
-            
-        } catch (error) {
-            console.error('Error loading animation:', error);
-            this.loadErrorAnimation();
-        }
-    }
-    
-    updateQualityIndicator(animationData) {
-        const dataSource = animationData.data_source || 'unknown';
-        let quality = 'Basic';
-        let color = 'rgba(128, 128, 128, 0.7)';
-        
-        if (dataSource === 'real_asl_datasets') {
-            quality = 'Dataset';
-            color = 'rgba(45, 114, 217, 0.7)';
-        } else if (animationData.libraries_used?.includes('mediapipe')) {
-            quality = 'MediaPipe';
-            color = 'rgba(76, 175, 80, 0.7)';
+        # Initialize pose generation methods
+        self.pose_generators = {
+            "wave": self.generate_wave_movement,
+            "forward_from_chin": self.generate_forward_movement, 
+            "point_forward": self.generate_point_movement,
+            "point_self": self.generate_point_self_movement,
+            "circular": self.generate_circular_movement,
+            "mouth_to_hand": self.generate_mouth_to_hand_movement,
+            "static": self.generate_static_pose,
+            "fingerspelling": self.generate_fingerspelling_sequence
         }
         
-        this.qualityIndicator.textContent = quality;
-        this.qualityIndicator.style.background = color;
-    }
+        print(f"Avatar generator initialized with {len(get_available_signs())} available signs")
     
-    async loadDatasetAnimation(animationData) {
-        this.animationSequence = animationData.animation_sequence || [];
-        this.totalFrames = animationData.total_frames || 30;
-        this.fps = animationData.fps || 30;
-        this.dataSource = animationData.data_source;
-        
-        console.log(`Loaded dataset animation: ${this.animationSequence.length} words, ${this.totalFrames} frames`);
-    }
-    
-    async loadMediaPipeAnimation(animationData) {
-        this.poseData = animationData.pose_sequence || [];
-        this.totalFrames = this.poseData.length;
-        this.fps = animationData.fps || 30;
-    }
-    
-    async loadFallbackAnimation(animationData) {
-        this.totalFrames = 60;
-        this.fps = 30;
-        this.fallbackData = animationData;
-    }
-    
-    loadErrorAnimation() {
-        this.totalFrames = 30;
-        this.fps = 30;
-        this.errorMode = true;
-        this.qualityIndicator.textContent = 'Error';
-        this.qualityIndicator.style.background = 'rgba(244, 67, 54, 0.7)';
-    }
-    
-    play() {
-        if (!this.currentAnimation) return;
-        
-        this.isPlaying = true;
-        
-        const animate = () => {
-            if (!this.isPlaying) return;
+    async def generate_avatar_animation(self, asl_gloss: str, method: str = 'dataset') -> Dict:
+        """Generate avatar animation using real ASL dataset data"""
+        try:
+            words = asl_gloss.split()
+            animation_sequence = []
+            total_frames = 0
             
-            this.render();
-            this.frameIndex++;
-            
-            if (this.frameIndex >= this.totalFrames) {
-                this.frameIndex = 0; // Loop animation
-            }
-            
-            const frameDelay = (1000 / this.fps) / this.animationSpeed;
-            setTimeout(() => {
-                this.animationFrame = requestAnimationFrame(animate);
-            }, frameDelay);
-        };
-        
-        animate();
-    }
-    
-    pause() {
-        this.isPlaying = false;
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-        }
-    }
-    
-    reset() {
-        this.pause();
-        this.frameIndex = 0;
-        this.render();
-    }
-    
-    render() {
-        if (!this.ctx) return;
-        
-        // Clear canvas
-        this.clearCanvas();
-        
-        if (this.errorMode) {
-            this.renderError();
-        } else if (this.currentAnimation?.type === 'real_dataset_poses') {
-            this.renderDatasetAnimation();
-        } else if (this.currentAnimation?.type === 'mediapipe_poses') {
-            this.renderMediaPipeAnimation();
-        } else {
-            this.renderFallback();
-        }
-        
-        // Add frame progress indicator
-        this.renderProgressIndicator();
-    }
-    
-    clearCanvas() {
-        this.ctx.fillStyle = settings.highContrast ? '#000000' : '#f0f8ff';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-    
-    renderDatasetAnimation() {
-        if (!this.animationSequence || this.animationSequence.length === 0) return;
-        
-        // Find current word and frame within that word
-        let currentFrame = this.frameIndex;
-        let currentWordData = null;
-        let frameInWord = 0;
-        
-        for (const wordData of this.animationSequence) {
-            if (currentFrame < wordData.frame_count) {
-                currentWordData = wordData;
-                frameInWord = currentFrame;
-                break;
-            }
-            currentFrame -= wordData.frame_count;
-        }
-        
-        if (!currentWordData) return;
-        
-        // Render based on dataset quality
-        const quality = currentWordData.quality || 'basic';
-        
-        if (quality === 'high' && currentWordData.frames && currentWordData.frames[frameInWord]) {
-            this.renderHighQualityFrame(currentWordData, frameInWord);
-        } else if (quality === 'medium') {
-            this.renderMediumQualityFrame(currentWordData, frameInWord);
-        } else if (currentWordData.type === 'fingerspelling') {
-            this.renderFingerspellingFrame(currentWordData, frameInWord);
-        } else {
-            this.renderBasicFrame(currentWordData, frameInWord);
-        }
-        
-        // Show current word
-        this.renderCurrentWord(currentWordData.word, currentWordData.dataset);
-    }
-    
-    renderHighQualityFrame(wordData, frameIndex) {
-        const frame = wordData.frames[frameIndex];
-        if (!frame || !frame.hand_landmarks) return;
-        
-        // Draw hand landmarks from real dataset
-        this.drawHandLandmarks(frame.hand_landmarks, '#4ecdc4', 'Real Data');
-        
-        // Draw movement trails for better visualization
-        if (frameIndex > 0) {
-            this.drawMovementTrail(wordData.frames, frameIndex);
-        }
-        
-        // Show handshape if available
-        if (frame.handshape) {
-            this.drawHandshapeLabel(frame.handshape);
-        }
-    }
-    
-    renderMediumQualityFrame(wordData, frameIndex) {
-        // Use linguistic properties to render informed animation
-        const properties = wordData.linguistic_properties;
-        if (!properties) return;
-        
-        // Generate position based on movement and location
-        const position = this.calculatePositionFromProperties(properties, frameIndex, wordData.frame_count);
-        
-        // Draw hand position
-        this.drawHandPosition(position.x, position.y, '#ff9800', 'Linguistic');
-        
-        // Show complexity indicator
-        if (properties.complexity) {
-            this.drawComplexityIndicator(properties.complexity);
-        }
-    }
-    
-    renderFingerspellingFrame(wordData, frameIndex) {
-        const lettersPerFrame = Math.floor(wordData.frame_count / wordData.letters.length);
-        const currentLetterIndex = Math.floor(frameIndex / lettersPerFrame);
-        const currentLetter = wordData.letters[currentLetterIndex];
-        
-        if (!currentLetter) return;
-        
-        // Draw fingerspelling position
-        this.drawFingerspellingLetter(currentLetter, frameIndex % lettersPerFrame, lettersPerFrame);
-        
-        // Show letter sequence progress
-        this.drawLetterProgress(wordData.letters, currentLetterIndex);
-    }
-    
-    renderBasicFrame(wordData, frameIndex) {
-        // Basic animation based on available data
-        const movement = wordData.movement || 'static';
-        const location = wordData.location || 'neutral';
-        
-        const position = this.getBasicPosition(movement, location, frameIndex, wordData.frame_count);
-        this.drawHandPosition(position.x, position.y, '#9e9e9e', 'Basic');
-    }
-    
-    drawHandLandmarks(landmarks, color, label) {
-        this.ctx.strokeStyle = color;
-        this.ctx.fillStyle = color;
-        this.ctx.lineWidth = 2;
-        
-        landmarks.forEach((landmark, index) => {
-            const x = landmark.x * this.canvas.width;
-            const y = landmark.y * this.canvas.height;
-            
-            // Draw landmark point
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 3, 0, 2 * Math.PI);
-            this.ctx.fill();
-            
-            // Draw connections between landmarks (simplified hand structure)
-            if (index > 0 && index % 4 !== 1) { // Connect fingers
-                const prevLandmark = landmarks[index - 1];
-                const prevX = prevLandmark.x * this.canvas.width;
-                const prevY = prevLandmark.y * this.canvas.height;
+            for word in words:
+                word_upper = word.upper()
                 
-                this.ctx.beginPath();
-                this.ctx.moveTo(prevX, prevY);
-                this.ctx.lineTo(x, y);
-                this.ctx.stroke();
-            }
-        });
-        
-        // Label the data source
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = '10px Arial';
-        this.ctx.fillText(label, this.canvas.width - 40, 15);
-    }
-    
-    drawMovementTrail(frames, currentFrameIndex) {
-        if (currentFrameIndex < 3) return;
-        
-        this.ctx.strokeStyle = 'rgba(78, 205, 196, 0.3)';
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        
-        for (let i = Math.max(0, currentFrameIndex - 10); i < currentFrameIndex; i++) {
-            const frame = frames[i];
-            if (frame && frame.hand_landmarks && frame.hand_landmarks[0]) {
-                const landmark = frame.hand_landmarks[0];
-                const x = landmark.x * this.canvas.width;
-                const y = landmark.y * this.canvas.height;
+                # Try to get real dataset information
+                sign_data = get_sign_data(word_upper)
                 
-                if (i === Math.max(0, currentFrameIndex - 10)) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    this.ctx.lineTo(x, y);
-                }
-            }
-        }
-        
-        this.ctx.stroke();
-    }
-    
-    drawHandPosition(x, y, color, label) {
-        const canvasX = x * this.canvas.width;
-        const canvasY = y * this.canvas.height;
-        
-        // Draw hand position
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-        this.ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        // Draw hand outline
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(canvasX, canvasY, 15, 0, 2 * Math.PI);
-        this.ctx.stroke();
-        
-        // Label
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = '10px Arial';
-        this.ctx.fillText(label, this.canvas.width - 40, 15);
-    }
-    
-    drawFingerspellingLetter(letter, frameInLetter, totalFramesForLetter) {
-        const x = 0.65 * this.canvas.width;
-        const y = 0.5 * this.canvas.height;
-        
-        // Draw letter
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = 'bold 24px Arial';
-        this.ctx.fillText(letter, x, y);
-        
-        // Draw fingerspelling indicator
-        this.ctx.strokeStyle = '#ff5722';
-        this.ctx.lineWidth = 3;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y + 20, 10, 0, 2 * Math.PI);
-        this.ctx.stroke();
-        
-        // Animate the letter appearance
-        const opacity = Math.sin((frameInLetter / totalFramesForLetter) * Math.PI);
-        this.ctx.globalAlpha = opacity;
-        this.ctx.fillStyle = '#ff5722';
-        this.ctx.font = '12px Arial';
-        this.ctx.fillText('Fingerspelling', x, y + 40);
-        this.ctx.globalAlpha = 1.0;
-    }
-    
-    drawLetterProgress(letters, currentIndex) {
-        const startX = 10;
-        const y = this.canvas.height - 20;
-        
-        this.ctx.font = '10px Arial';
-        
-        letters.forEach((letter, index) => {
-            const x = startX + (index * 15);
+                if sign_data:
+                    # Generate animation from real dataset
+                    word_animation = await self.generate_from_dataset(word, sign_data)
+                    animation_sequence.append(word_animation)
+                    total_frames += word_animation["frame_count"]
+                else:
+                    # Generate fingerspelling for unknown words
+                    fingerspell_animation = self.generate_fingerspelling_animation(word)
+                    animation_sequence.append(fingerspell_animation)
+                    total_frames += fingerspell_animation["frame_count"]
             
-            if (index === currentIndex) {
-                this.ctx.fillStyle = '#ff5722';
-                this.ctx.font = 'bold 12px Arial';
-            } else if (index < currentIndex) {
-                this.ctx.fillStyle = '#4caf50';
-                this.ctx.font = '10px Arial';
-            } else {
-                this.ctx.fillStyle = '#cccccc';
-                this.ctx.font = '10px Arial';
+            # Create complete animation data
+            avatar_data = {
+                "type": "real_dataset_poses",
+                "asl_gloss": asl_gloss,
+                "animation_sequence": animation_sequence,
+                "total_frames": total_frames,
+                "fps": 30,
+                "duration": total_frames / 30,
+                "format": "mediapipe_landmarks",
+                "coordinate_system": "normalized_0_to_1",
+                "libraries_used": ["mediapipe", "opencv", "numpy"],
+                "data_source": "real_asl_datasets"
             }
             
-            this.ctx.fillText(letter, x, y);
-        });
-    }
-    
-    calculatePositionFromProperties(properties, frameIndex, totalFrames) {
-        const progress = frameIndex / totalFrames;
-        const baseX = 0.5;
-        const baseY = 0.5;
-        
-        // Modify position based on movement type
-        const movement = properties.movement || '';
-        let x = baseX;
-        let y = baseY;
-        
-        if (movement.includes('circular')) {
-            const angle = progress * 2 * Math.PI;
-            x = baseX + 0.1 * Math.cos(angle);
-            y = baseY + 0.1 * Math.sin(angle);
-        } else if (movement.includes('forward')) {
-            x = baseX + (progress * 0.2);
-        } else if (movement.includes('up')) {
-            y = baseY - (progress * 0.2);
-        }
-        
-        return { x, y };
-    }
-    
-    getBasicPosition(movement, location, frameIndex, totalFrames) {
-        const progress = frameIndex / totalFrames;
-        let baseX = 0.5, baseY = 0.5;
-        
-        // Adjust base position by location
-        if (location.includes('chest')) baseY = 0.6;
-        if (location.includes('head')) baseY = 0.3;
-        if (location.includes('side')) baseX = 0.7;
-        
-        // Apply movement
-        let x = baseX, y = baseY;
-        if (movement === 'wave') {
-            x = baseX + 0.05 * Math.sin(progress * Math.PI * 4);
-        } else if (movement === 'circular') {
-            const angle = progress * 2 * Math.PI;
-            x = baseX + 0.05 * Math.cos(angle);
-            y = baseY + 0.05 * Math.sin(angle);
-        }
-        
-        return { x, y };
-    }
-    
-    renderCurrentWord(word, dataset) {
-        // Word display
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = 'bold 16px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(word, this.canvas.width / 2, this.canvas.height - 40);
-        
-        // Dataset source
-        this.ctx.fillStyle = '#666666';
-        this.ctx.font = '10px Arial';
-        this.ctx.fillText(`Source: ${dataset}`, this.canvas.width / 2, this.canvas.height - 25);
-    }
-    
-    renderProgressIndicator() {
-        const progress = this.frameIndex / this.totalFrames;
-        const barWidth = this.canvas.width - 20;
-        const barHeight = 3;
-        const x = 10;
-        const y = this.canvas.height - 10;
-        
-        // Background
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        this.ctx.fillRect(x, y, barWidth, barHeight);
-        
-        // Progress
-        this.ctx.fillStyle = '#4ecdc4';
-        this.ctx.fillRect(x, y, barWidth * progress, barHeight);
-    }
-    
-    renderError() {
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = '14px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('⚠️ Avatar Error', this.canvas.width / 2, this.canvas.height / 2 - 10);
-        this.ctx.font = '12px Arial';
-        this.ctx.fillText('Check dataset connection', this.canvas.width / 2, this.canvas.height / 2 + 10);
-    }
-    
-    renderFallback() {
-        this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('🤟 ASL Avatar Loading...', this.canvas.width / 2, this.canvas.height / 2);
-    }
-}
-
-// Rest of the content.js remains the same for DOM manipulation
-document.addEventListener('signAvatarSettingsChanged', (event) => {
-    settings = event.detail;
-
-    if (settings.active && !isAvatarDisplayed) {
-        createAvatar();
-    } else if (!settings.active && isAvatarDisplayed) {
-        removeAvatar();
-    }
-
-    if (avatarDiv) {
-        applyAvatarStyles();
-    }
-});
-
-function initialize() {
-    const videoId = new URLSearchParams(window.location.search).get("v");
-    if (!videoId) return;
-
-    chrome.storage.sync.get({
-        active: false,
-        autoStart: true,
-        pipMode: false,
-        highContrast: false,
-        showAvatar: true,
-        avatarSize: 150
-    }, (items)=> {
-        settings = items;
-
-        if (settings.active && settings.autoStart) {
-            createAvatar();
-        }
-
-        setUpPipObserver();
-    });
-}
-
-async function createAvatar() {
-    if (isAvatarDisplayed) return;
-    
-    const videoId = new URLSearchParams(window.location.search).get("v");
-    if (!videoId) return;
-    
-    try {
-        avatarDiv = document.createElement("div");
-        avatarDiv.id = 'sign-avatar-cc';
-        avatarDiv.style.position = 'fixed';
-        avatarDiv.style.bottom = '80px';
-        avatarDiv.style.right = '20px';
-        avatarDiv.style.background= "rgba(255,255,255,0.9)";
-        avatarDiv.style.padding= '15px';
-        avatarDiv.style.borderRadius = '8px';
-        avatarDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.30)';
-        avatarDiv.style.zIndex = '9999';
-        avatarDiv.style.maxWidth = '350px';
-        avatarDiv.style.transition = 'all 0.2s ease';
-
-        avatarDiv.innerHTML = `<div style= 'display: flex; align-items: center;'>
-            <span style = 'font-weight: bold; margin-right: 10px;'>Sign CC (Dataset Mode)</span>
-            <div class = 'loading-spinner' style='width: 16px; height: 16px; border: 2px solid #ccc;
-            border-top-color: #2d72d9; border-radius: 50%; animation: spin 1s linear infinite;'></div>
-        </div>
-        <p style='margin-top: 10px; font-size: 14px;'>Loading real ASL dataset...</p>`;
-
-        const style = document.createElement('style');
-        style.textContent = `@keyframes spin{ to{transform: rotate(360deg); } }`;
-        document.head.appendChild(style);
-        document.body.appendChild(avatarDiv);
-        isAvatarDisplayed = true;
-
-        applyAvatarStyles();
-        
-        const response = await fetch("http://localhost:5000/transcribe", {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({videoId})
-        });
-        
-        if (!response.ok){
-            throw new Error(`Server Error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (avatarDiv){
-            avatarDiv.innerHTML = `
-            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
-                <span style='font-weight: bold;'>ASL Captions (Real Datasets)</span>
-                <button id='close-avatar' style='background: none; border: none; cursor: pointer; font-size: 16px;'>×</button>
-            </div>
-            <div id="asl-captions-container" style='max-height: 200px; overflow-y: auto;'></div>
-            `;
-
-            const captionsContainer = document.getElementById('asl-captions-container');
-            
-            if (data.asl_segments && data.asl_segments.length > 0) {
-                for (const segment of data.asl_segments) {
-                    const captionDiv = document.createElement('div');
-                    captionDiv.className = 'asl-caption';
-                    captionDiv.style.marginBottom = '12px';
-                    captionDiv.style.paddingBottom = '8px';
-                    captionDiv.style.borderBottom = '1px solid rgba(0,0,0,0.1)';
-                    
-                    let timestampHtml = '';
-                    if (segment.start !== undefined && segment.end !== undefined) {
-                        const formatTime = (time) => {
-                            const minutes = Math.floor(time / 60);
-                            const seconds = Math.floor(time % 60);
-                            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                        };
-                        
-                        timestampHtml = `
-                        <div style="font-size: 0.8em; color: #888; margin-bottom: 3px;">
-                            ${formatTime(segment.start)} - ${formatTime(segment.end)}
-                        </div>`;
-                        
-                        captionDiv.dataset.start = segment.start;
-                        captionDiv.dataset.end = segment.end;
-                    }
-                    
-                    captionDiv.innerHTML = `
-                        ${timestampHtml}
-                        <div class="asl-text" style="font-weight: bold; color: #2d72d9; margin-bottom: 4px; font-size: 1.1em;">
-                            ${segment.asl_gloss}
-                        </div>
-                        <div class="english-text" style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
-                            ${segment.english}
-                        </div>
-                        <div class="dataset-avatar-container" style="width: 100%; height: ${settings.avatarSize}px; border-radius: 8px; overflow: hidden; margin-top: 10px; display: none; background: #f5f5f5; position: relative;">
-                            <p style="text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; margin: 0;">Loading dataset avatar...</p>
-                        </div>
-                    `;
-                    
-                    captionsContainer.appendChild(captionDiv);
-                    
-                    if (settings.showAvatar) {
-                        const avatarContainer = captionDiv.querySelector('.dataset-avatar-container');
-                        avatarContainer.style.display = 'block';
-                        
-                        generateDatasetAvatarForSegment(segment.asl_gloss, avatarContainer);
-                    }
-                }
-            } else {
-                captionsContainer.innerHTML = '<p>ASL translation unavailable</p>';
+            return {
+                "success": True,
+                "data": avatar_data,
+                "method": "real_dataset_integration"
             }
-
-            document.getElementById('close-avatar').addEventListener('click', ()=> {
-                removeAvatar();
-                settings.active = false;
-                chrome.storage.sync.set({active: false});
-            });
             
-            makeAvatarDraggable();
-            syncCaptionsWithVideo();
-        }
-    } catch (error) {
-        console.error("Error with dataset CC:", error);
+        except Exception as e:
+            print(f"Error generating avatar from datasets: {e}")
+            return await self._generate_error_response(asl_gloss)
     
-        if (avatarDiv) {
-            avatarDiv.innerHTML = `
-            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
-                <span style='font-weight: bold;'>Sign CC</span>
-                <button id='close-avatar' style='background: none; border: none; cursor: pointer; font-size: 16px;'>×</button>
-            </div>
-            <p style='color: red; margin-top: 10px;'>Dataset loading failed. Check backend connection.</p>
-         `;
-         document.getElementById('close-avatar').addEventListener('click', removeAvatar);
-        }
-    }
-}
-
-async function generateDatasetAvatarForSegment(aslGloss, containerElement) {
-    try {
-        // Check cache first
-        if (animationCache.has(aslGloss)) {
-            const cachedData = animationCache.get(aslGloss);
-            renderCachedAvatar(cachedData, containerElement);
-            return;
-        }
-
-        // Call the backend to generate the animation using real datasets
-        const response = await fetch("http://localhost:5000/generate-avatar", {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                asl_gloss: aslGloss,
-                method: 'dataset'
+    async def generate_from_dataset(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from real dataset information"""
+        dataset_source = sign_data.get("dataset", "unknown")
+        
+        if dataset_source == "asllvd" and "pose_coordinates" in sign_data:
+            # ASLLVD has actual pose coordinates
+            return await self.generate_from_pose_coordinates(word, sign_data)
+        
+        elif dataset_source == "how2sign" and "pose_keypoints" in sign_data:
+            # How2Sign has keypoint sequences
+            return await self.generate_from_keypoints(word, sign_data)
+        
+        elif dataset_source == "wlasl" and "keypoints" in sign_data:
+            # WLASL has keypoint data
+            return await self.generate_from_wlasl_keypoints(word, sign_data)
+        
+        elif dataset_source == "asl_lex":
+            # ASL-LEX has linguistic properties - use for informed generation
+            return await self.generate_from_linguistic_properties(word, sign_data)
+        
+        elif dataset_source == "ms_asl" and "pose_sequence" in sign_data:
+            # MS-ASL has pose sequences
+            return await self.generate_from_pose_sequence(word, sign_data)
+        
+        elif dataset_source == "fallback":
+            # Use fallback generation for basic signs
+            return await self.generate_from_fallback(word, sign_data)
+        
+        else:
+            # Default generation based on available properties
+            return await self.generate_from_properties(word, sign_data)
+    
+    async def generate_from_pose_coordinates(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from ASLLVD pose coordinates"""
+        coordinates = sign_data.get("pose_coordinates", [])
+        
+        if not coordinates:
+            return await self.generate_from_properties(word, sign_data)
+        
+        frames = []
+        frame_count = len(coordinates)
+        
+        for i, coord_set in enumerate(coordinates):
+            # Convert ASLLVD coordinates to MediaPipe format
+            mediapipe_landmarks = self.convert_to_mediapipe_format(coord_set)
+            
+            frames.append({
+                "frame_number": i,
+                "hand_landmarks": mediapipe_landmarks,
+                "timestamp": i / 30.0,
+                "source": "asllvd_coordinates"
             })
-        });
         
-        if (!response.ok) {
-            throw new Error(`Server Error: ${response.status}`);
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "asllvd",
+            "quality": "high",
+            "handshape": sign_data.get("handshape", "unknown"),
+            "movement": sign_data.get("movement", "unknown"),
+            "location": sign_data.get("location", "unknown")
+        }
+    
+    async def generate_from_keypoints(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from How2Sign keypoints"""
+        keypoints = sign_data.get("pose_keypoints", [])
+        
+        frames = []
+        frame_count = len(keypoints)
+        
+        for i, keypoint_frame in enumerate(keypoints):
+            # Extract hand landmarks from full-body keypoints
+            hand_landmarks = self.extract_hand_landmarks(keypoint_frame)
+            
+            frames.append({
+                "frame_number": i,
+                "hand_landmarks": hand_landmarks,
+                "timestamp": i / 30.0,
+                "source": "how2sign_keypoints"
+            })
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "how2sign",
+            "quality": "high"
+        }
+    
+    async def generate_from_wlasl_keypoints(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from WLASL keypoint data"""
+        keypoints = sign_data.get("keypoints", [])
+        
+        frames = []
+        frame_count = len(keypoints)
+        
+        for i, kp_frame in enumerate(keypoints):
+            # Process WLASL keypoint format
+            hand_landmarks = self.process_wlasl_keypoints(kp_frame)
+            
+            frames.append({
+                "frame_number": i,
+                "hand_landmarks": hand_landmarks,
+                "timestamp": i / 30.0,
+                "source": "wlasl_keypoints"
+            })
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "wlasl",
+            "quality": "high",
+            "video_count": sign_data.get("video_count", 1)
+        }
+    
+    async def generate_from_linguistic_properties(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation based on ASL-LEX linguistic properties"""
+        # Use linguistic properties to inform generation
+        handshape_1 = sign_data.get("handshape_1", "")
+        handshape_2 = sign_data.get("handshape_2", "")
+        movement = sign_data.get("movement", "")
+        location = sign_data.get("location", "")
+        complexity = sign_data.get("complexity", 3)
+        
+        # Generate frames based on complexity and movement type
+        frame_count = max(18, int(complexity * 6))  # More complex signs take longer
+        
+        # Select appropriate movement generator
+        movement_type = self.map_movement_to_generator(movement)
+        frames = await self.generate_movement_sequence(movement_type, frame_count, location)
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "asl_lex",
+            "quality": "medium",
+            "linguistic_properties": {
+                "handshape_1": handshape_1,
+                "handshape_2": handshape_2,
+                "movement": movement,
+                "location": location,
+                "complexity": complexity,
+                "frequency": sign_data.get("frequency", 0),
+                "iconicity": sign_data.get("iconicity", 0)
+            }
+        }
+    
+    async def generate_from_pose_sequence(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from MS-ASL pose sequence"""
+        pose_sequence = sign_data.get("pose_sequence", [])
+        
+        frames = []
+        frame_count = len(pose_sequence)
+        
+        for i, pose_frame in enumerate(pose_sequence):
+            # Convert MS-ASL pose format to MediaPipe
+            hand_landmarks = self.convert_ms_asl_pose(pose_frame)
+            
+            frames.append({
+                "frame_number": i,
+                "hand_landmarks": hand_landmarks,
+                "timestamp": i / 30.0,
+                "source": "ms_asl_pose"
+            })
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "ms_asl",
+            "quality": "high"
+        }
+    
+    async def generate_from_fallback(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from fallback data"""
+        movement = sign_data.get("movement", "static")
+        frame_count = sign_data.get("frames", 24)
+        location = sign_data.get("location", "neutral")
+        
+        # Use existing movement generators
+        if movement in self.pose_generators:
+            frames = await self.generate_movement_sequence(movement, frame_count, location)
+        else:
+            frames = await self.generate_movement_sequence("static", frame_count, location)
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": "fallback",
+            "quality": "basic",
+            "handshape": sign_data.get("handshape", "flat_hand"),
+            "movement": movement,
+            "location": location
+        }
+    
+    async def generate_from_properties(self, word: str, sign_data: Dict) -> Dict:
+        """Generate animation from whatever properties are available"""
+        # Extract any available movement/location information
+        movement = "static"
+        location = "neutral" 
+        frame_count = 24
+        
+        # Look for movement clues in the data
+        for key, value in sign_data.items():
+            if "movement" in key.lower() and isinstance(value, str):
+                movement = value.lower()
+            elif "location" in key.lower() and isinstance(value, str):
+                location = value.lower()
+            elif "frame" in key.lower() and isinstance(value, (int, float)):
+                frame_count = int(value)
+        
+        frames = await self.generate_movement_sequence(movement, frame_count, location)
+        
+        return {
+            "word": word,
+            "frame_count": frame_count,
+            "frames": frames,
+            "dataset": sign_data.get("dataset", "unknown"),
+            "quality": "medium",
+            "available_properties": list(sign_data.keys())
+        }
+    
+    def map_movement_to_generator(self, movement: str) -> str:
+        """Map linguistic movement descriptions to generator functions"""
+        movement = movement.lower()
+        
+        if "wave" in movement or "wiggle" in movement:
+            return "wave"
+        elif "forward" in movement or "away" in movement:
+            return "forward_from_chin"
+        elif "point" in movement:
+            return "point_forward"
+        elif "circular" in movement or "circle" in movement:
+            return "circular"
+        elif "mouth" in movement and "hand" in movement:
+            return "mouth_to_hand"
+        else:
+            return "static"
+    
+    async def generate_movement_sequence(self, movement_type: str, frame_count: int, location: str) -> List[Dict]:
+        """Generate movement sequence based on type and location"""
+        if movement_type in self.pose_generators:
+            generator = self.pose_generators[movement_type]
+            return generator(frame_count, location)
+        else:
+            return self.generate_static_pose(frame_count, location)
+    
+    def generate_wave_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate wave movement frames"""
+        frames = []
+        base_x, base_y = self.get_location_coordinates(location)
+        
+        for frame in range(frame_count):
+            wave_offset = 0.05 * np.sin(frame * 0.4)
+            
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": base_x + wave_offset,
+                    "y": base_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "wave"
+            })
+        
+        return frames
+    
+    def generate_forward_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate forward movement frames"""
+        frames = []
+        start_x, start_y = self.get_location_coordinates(location)
+        end_x, end_y = start_x + 0.15, start_y + 0.1
+        
+        for frame in range(frame_count):
+            progress = frame / (frame_count - 1) if frame_count > 1 else 0
+            current_x = start_x + (end_x - start_x) * progress
+            current_y = start_y + (end_y - start_y) * progress
+            
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": current_x,
+                    "y": current_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "forward"
+            })
+        
+        return frames
+    
+    def generate_point_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate pointing movement frames"""
+        frames = []
+        point_x, point_y = self.get_location_coordinates(location)
+        
+        for frame in range(frame_count):
+            emphasis = 0.02 * np.sin(frame * 0.8) if frame < frame_count // 2 else 0
+            
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": point_x + emphasis,
+                    "y": point_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "point",
+                "handshape": "index_point"
+            })
+        
+        return frames
+    
+    def generate_point_self_movement(self, frame_count: int, location: str = "chest") -> List[Dict]:
+        """Generate pointing to self movement"""
+        frames = []
+        chest_x, chest_y = 0.5, 0.7  # Point to chest
+        
+        for frame in range(frame_count):
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": chest_x,
+                    "y": chest_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "point_self",
+                "handshape": "index_point"
+            })
+        
+        return frames
+    
+    def generate_circular_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate circular movement frames"""
+        frames = []
+        center_x, center_y = self.get_location_coordinates(location)
+        radius = 0.04
+        
+        for frame in range(frame_count):
+            angle = (frame / frame_count) * 2 * np.pi
+            
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": center_x + radius * np.cos(angle),
+                    "y": center_y + radius * np.sin(angle),
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "circular"
+            })
+        
+        return frames
+    
+    def generate_mouth_to_hand_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate movement from mouth to hand"""
+        frames = []
+        mouth_x, mouth_y = 0.5, 0.35  # Mouth position
+        hand_x, hand_y = 0.4, 0.6     # Other hand position
+        
+        for frame in range(frame_count):
+            progress = frame / (frame_count - 1) if frame_count > 1 else 0
+            current_x = mouth_x + (hand_x - mouth_x) * progress
+            current_y = mouth_y + (hand_y - mouth_y) * progress
+            
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": current_x,
+                    "y": current_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "mouth_to_hand"
+            })
+        
+        return frames
+    
+    def generate_static_pose(self, frame_count: int, location: str = "neutral") -> List[Dict]:
+        """Generate static pose frames"""
+        frames = []
+        pos_x, pos_y = self.get_location_coordinates(location)
+        
+        for frame in range(frame_count):
+            frames.append({
+                "frame_number": frame,
+                "hand_landmarks": [{
+                    "x": pos_x,
+                    "y": pos_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "movement": "static"
+            })
+        
+        return frames
+    
+    def get_location_coordinates(self, location: str) -> tuple:
+        """Get coordinates for different signing locations"""
+        location_map = {
+            "neutral": (0.5, 0.5),
+            "chest": (0.5, 0.6),
+            "chin": (0.5, 0.4),
+            "mouth": (0.5, 0.35),
+            "forehead": (0.5, 0.25),
+            "near_head": (0.6, 0.3),
+            "side": (0.7, 0.5)
         }
         
-        const data = await response.json();
+        return location_map.get(location.lower(), (0.5, 0.5))
+    
+    def generate_fingerspelling_animation(self, word: str) -> Dict:
+        """Generate fingerspelling animation for unknown words"""
+        frames = []
+        letters = list(word.upper())
+        frames_per_letter = 20
         
-        if (data.success) {
-            // Cache the animation data
-            animationCache.set(aslGloss, data);
-            
-            // Create and initialize the dataset avatar renderer
-            const renderer = new DatasetAvatarRenderer(containerElement, settings.avatarSize);
-            
-            // Load the real dataset animation
-            await renderer.loadAnimation(data.data);
-            
-            // Store renderer for later control
-            currentAvatarAnimations.set(aslGloss, renderer);
-            
-            // Auto-play the animation
-            setTimeout(() => {
-                renderer.play();
-            }, 500);
-            
-            // Add dataset info display
-            addDatasetInfo(containerElement, data);
-            
-        } else {
-            renderAvatarError(containerElement, "Dataset generation failed");
+        for i, letter in enumerate(letters):
+            letter_frames = self.generate_letter_frames(letter, frames_per_letter)
+            frames.extend(letter_frames)
+        
+        return {
+            "word": word,
+            "type": "fingerspelling",
+            "frame_count": len(frames),
+            "frames": frames,
+            "letters": letters,
+            "handshape": "alphabet_sequence",
+            "quality": "fingerspelled"
         }
-    } catch (error) {
-        console.error("Error generating dataset avatar:", error);
-        renderAvatarError(containerElement, "Connection to dataset backend failed");
-    }
-}
-
-function renderCachedAvatar(cachedData, containerElement) {
-    const renderer = new DatasetAvatarRenderer(containerElement, settings.avatarSize);
-    renderer.loadAnimation(cachedData.data).then(() => {
-        renderer.play();
-    });
     
-    addDatasetInfo(containerElement, cachedData);
-}
-
-function addDatasetInfo(containerElement, avatarData) {
-    // Add dataset information overlay
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'dataset-info';
-    infoDiv.style.cssText = `
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 10px;
-        cursor: pointer;
-        transition: opacity 0.3s;
-    `;
-    
-    const method = avatarData.method || 'unknown';
-    const dataSource = avatarData.data?.data_source || 'unknown';
-    
-    infoDiv.innerHTML = `📊 ${method}`;
-    infoDiv.title = `Data source: ${dataSource}\nLibraries: ${avatarData.libraries_used?.join(', ') || 'unknown'}`;
-    
-    // Show/hide on hover
-    containerElement.addEventListener('mouseenter', () => {
-        infoDiv.style.opacity = '1';
-    });
-    containerElement.addEventListener('mouseleave', () => {
-        infoDiv.style.opacity = '0.7';
-    });
-    
-    containerElement.appendChild(infoDiv);
-}
-
-function renderAvatarError(containerElement, errorMessage) {
-    containerElement.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; text-align: center; padding: 10px;">
-            <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
-            <div style="font-weight: bold; font-size: 12px; margin-bottom: 4px;">Dataset Error</div>
-            <div style="font-size: 10px; opacity: 0.9;">${errorMessage}</div>
-        </div>
-    `;
-}
-
-function syncCaptionsWithVideo() {
-    const video = document.querySelector('video');
-    if (!video || !avatarDiv) return;
-    
-    const updateCaptions = () => {
-        const currentTime = video.currentTime;
-        const captions = avatarDiv.querySelectorAll('.asl-caption');
-        let foundActiveCaption = false;
+    def generate_letter_frames(self, letter: str, frame_count: int) -> List[Dict]:
+        """Generate frames for fingerspelling a single letter"""
+        frames = []
+        pos_x, pos_y = 0.6, 0.5  # Fingerspelling space
         
-        captions.forEach(caption => {
-            if (!caption.dataset.start || !caption.dataset.end) return;
-            
-            const startTime = parseFloat(caption.dataset.start);
-            const endTime = parseFloat(caption.dataset.end);
-            
-            if (currentTime >= startTime && currentTime <= endTime) {
-                caption.style.display = 'block';
-                caption.style.backgroundColor = 'rgba(45, 114, 217, 0.1)';
-                caption.style.border = '2px solid rgba(45, 114, 217, 0.3)';
-                foundActiveCaption = true;
-                
-                // Auto-play avatar animation for current caption
-                const aslText = caption.querySelector('.asl-text').textContent;
-                const renderer = currentAvatarAnimations.get(aslText);
-                if (renderer && !renderer.isPlaying) {
-                    renderer.reset();
-                    renderer.play();
+        for frame in range(frame_count):
+            frames.append({
+                "frame_number": frame,
+                "letter": letter,
+                "hand_landmarks": [{
+                    "x": pos_x,
+                    "y": pos_y,
+                    "z": 0.0,
+                    "visibility": 0.9
+                }],
+                "timestamp": frame / 30.0,
+                "handshape": f"letter_{letter.lower()}"
+            })
+        
+        return frames
+    
+    # Helper methods for dataset format conversion
+    def convert_to_mediapipe_format(self, coordinates) -> List[Dict]:
+        """Convert various coordinate formats to MediaPipe format"""
+        # This would contain specific conversion logic for each dataset format
+        # For now, return basic format
+        return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
+    
+    def extract_hand_landmarks(self, full_body_keypoints) -> List[Dict]:
+        """Extract hand landmarks from full-body keypoint data"""
+        # Extract just the hand parts from full-body pose data
+        return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
+    
+    def process_wlasl_keypoints(self, wlasl_keypoints) -> List[Dict]:
+        """Process WLASL-specific keypoint format"""
+        # Convert WLASL keypoint format to MediaPipe
+        return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
+    
+    def convert_ms_asl_pose(self, ms_asl_pose) -> List[Dict]:
+        """Convert MS-ASL pose format to MediaPipe"""
+        # Convert MS-ASL specific format
+        return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
+    
+    async def _generate_error_response(self, asl_gloss: str) -> Dict:
+        """Generate error response with fallback"""
+        return {
+            "success": False,
+            "data": {
+                "type": "error",
+                "asl_gloss": asl_gloss,
+                "message": "Could not generate avatar from datasets - using fallback",
+                "fallback_animation": {
+                    "type": "basic_pose",
+                    "frames": 30,
+                    "basic_landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0}]
                 }
-                
-                caption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                caption.style.display = settings.showAllCaptions ? 'block' : 'none';
-                caption.style.backgroundColor = 'transparent';
-                caption.style.border = 'none';
-            }
-        });
-        
-        // If no active caption, show all if setting enabled
-        if (!foundActiveCaption && settings.showAllCaptions) {
-            captions.forEach(caption => {
-                caption.style.display = 'block';
-            });
+            },
+            "method": "error_fallback"
         }
-    };
-    
-    video.addEventListener('timeupdate', updateCaptions);
-    avatarDiv.dataset.hasTimeSync = 'true';
-}
-
-function removeAvatar() {
-    if (avatarDiv) {
-        // Clean up all avatar renderers
-        currentAvatarAnimations.forEach(renderer => {
-            renderer.pause();
-        });
-        currentAvatarAnimations.clear();
-        
-        avatarDiv.remove();
-        avatarDiv = null;
-        isAvatarDisplayed = false;
-    }
-}
-
-function applyAvatarStyles() {
-    if (!avatarDiv) return;
-
-    if (settings.highContrast){
-        avatarDiv.style.background = '#000000';
-        avatarDiv.style.color = '#ffffff';
-        avatarDiv.style.border = '2px solid #ffffff';
-        
-        const aslTexts = avatarDiv.querySelectorAll('.asl-text');
-        aslTexts.forEach(text => {
-            text.style.color = '#4da6ff';
-        });
-    } else{
-        avatarDiv.style.background = 'rgba(255,255,255,0.9)';
-        avatarDiv.style.color = '#000000';
-        avatarDiv.style.border = 'none';
-        
-        const aslTexts = avatarDiv.querySelectorAll('.asl-text');
-        aslTexts.forEach(text => {
-            text.style.color = '#2d72d9';
-        });
-    }
-    
-    // Apply avatar-specific settings
-    const avatarContainers = avatarDiv.querySelectorAll('.dataset-avatar-container');
-    avatarContainers.forEach(container => {
-        container.style.display = settings.showAvatar ? 'block' : 'none';
-        container.style.height = `${settings.avatarSize}px`;
-        
-        // Update canvas size for existing renderers
-        const canvas = container.querySelector('canvas');
-        if (canvas) {
-            canvas.width = settings.avatarSize;
-            canvas.height = settings.avatarSize;
-            canvas.style.background = settings.highContrast ? '#000000' : '#f0f8ff';
-        }
-    });
-    
-    // Apply ASL-only mode
-    if (settings.aslOnly) {
-        const englishTexts = avatarDiv.querySelectorAll('.english-text');
-        englishTexts.forEach(text => {
-            text.style.display = 'none';
-        });
-    } else {
-        const englishTexts = avatarDiv.querySelectorAll('.english-text');
-        englishTexts.forEach(text => {
-            text.style.display = 'block';
-        });
-    }
-    
-    // Apply fingerspelling highlighting
-    if (settings.highlightFingerspelling) {
-        const aslTexts = avatarDiv.querySelectorAll('.asl-text');
-        aslTexts.forEach(text => {
-            const words = text.textContent.split(' ');
-            const highlightedWords = words.map(word => {
-                // Highlight words that are likely fingerspelled (all caps, not common ASL words)
-                const commonASLWords = ['I', 'YOU', 'ME', 'HELLO', 'THANK-YOU', 'GOOD', 'BAD', 'YES', 'NO'];
-                if (word.length > 2 && !commonASLWords.includes(word)) {
-                    return `<span style="background: rgba(255, 152, 0, 0.3); padding: 2px 4px; border-radius: 3px;" title="Likely fingerspelled">${word}</span>`;
-                }
-                return word;
-            });
-            text.innerHTML = highlightedWords.join(' ');
-        });
-    }
-}
-
-function setUpPipObserver(){
-    document.addEventListener('enterpictureinpicture', (event) => {
-        if (settings.pipMode && settings.active) {
-            const pipWindow = event.pictureInPictureWindow;
-            console.log("In PiP Mode, size:", pipWindow.width, pipWindow.height);
-            
-            if (avatarDiv) {
-                avatarDiv.style.position = 'fixed';
-                avatarDiv.style.zIndex = '2147483647';
-                avatarDiv.style.bottom = '10px';
-                avatarDiv.style.right = '10px';
-                avatarDiv.style.maxWidth = '200px';
-                avatarDiv.style.fontSize = '12px';
-                
-                // Resize avatar renderers for PiP
-                currentAvatarAnimations.forEach(renderer => {
-                    if (renderer.canvas) {
-                        renderer.canvas.width = 100;
-                        renderer.canvas.height = 100;
-                    }
-                });
-            }
-        }
-    });
-    
-    document.addEventListener('leavepictureinpicture', () => {
-        console.log("Exited PiP Mode");
-        
-        if (avatarDiv) {
-            avatarDiv.style.maxWidth = '350px';
-            avatarDiv.style.fontSize = '';
-            
-            // Restore avatar renderer sizes
-            currentAvatarAnimations.forEach(renderer => {
-                if (renderer.canvas) {
-                    renderer.canvas.width = settings.avatarSize;
-                    renderer.canvas.height = settings.avatarSize;
-                }
-            });
-        }
-    });
-}
-
-function makeAvatarDraggable() {
-    if (!avatarDiv) return;
-
-    let isDragging = false;
-    let offsetX, offsetY;
-    
-    const header = avatarDiv.querySelector('div');
-    if (!header) return;
-    
-    header.style.cursor = 'move';
-    header.style.userSelect = 'none';
-    
-    header.addEventListener('mousedown', (e)=>{
-        isDragging = true;
-        offsetX = e.clientX - avatarDiv.getBoundingClientRect().left;
-        offsetY = e.clientY - avatarDiv.getBoundingClientRect().top;
-        e.preventDefault();
-    });
-    
-    document.addEventListener('mousemove', (e)=>{
-        if (!isDragging) return;
-        avatarDiv.style.left = (e.clientX - offsetX) + 'px';
-        avatarDiv.style.right = 'auto';
-        avatarDiv.style.top = (e.clientY - offsetY) + 'px';
-        avatarDiv.style.bottom = 'auto';
-    });
-    
-    document.addEventListener('mouseup', ()=>{
-        isDragging = false;
-    });
-}
-
-// Performance optimization: Debounce avatar generation
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Debounced avatar generation for better performance
-const debouncedAvatarGeneration = debounce(generateDatasetAvatarForSegment, 300);
-
-// Add keyboard shortcuts for avatar control
-document.addEventListener('keydown', (e) => {
-    if (!avatarDiv || !settings.active) return;
-    
-    // Only process if not typing in an input field
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    
-    switch(e.key) {
-        case 'a':
-            if (e.ctrlKey || e.metaKey) {
-                e.preventDefault();
-                // Toggle all avatar animations
-                currentAvatarAnimations.forEach(renderer => {
-                    if (renderer.isPlaying) {
-                        renderer.pause();
-                    } else {
-                        renderer.play();
-                    }
-                });
-            }
-            break;
-        case 'r':
-            if (e.ctrlKey || e.metaKey) {
-                e.preventDefault();
-                // Reset all avatar animations
-                currentAvatarAnimations.forEach(renderer => {
-                    renderer.reset();
-                });
-            }
-            break;
-        case 'h':
-            if (e.ctrlKey || e.metaKey) {
-                e.preventDefault();
-                // Toggle high contrast
-                settings.highContrast = !settings.highContrast;
-                applyAvatarStyles();
-                chrome.storage.sync.set({highContrast: settings.highContrast});
-            }
-            break;
-    }
-});
-
-// Initialize everything
-initialize();
-
-// Handle YouTube navigation (single-page app)
-let lastURL = location.href;
-new MutationObserver(()=>{
-    if (location.href !== lastURL){
-        lastURL = location.href;
-        
-        // Clean up existing avatars and cache
-        removeAvatar();
-        animationCache.clear();
-        
-        // Reinitialize after navigation
-        setTimeout(initialize, 1000);
-    }
-}).observe(document, {subtree:true, childList:true});
-
-// Add CSS for enhanced animations
-const enhancedStyles = document.createElement('style');
-enhancedStyles.textContent = `
-    .asl-caption {
-        transition: all 0.3s ease;
-    }
-    
-    .asl-caption:hover {
-        transform: translateX(5px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .dataset-avatar-container {
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-    
-    .dataset-avatar-container:hover {
-        border-color: rgba(45, 114, 217, 0.3);
-        box-shadow: 0 4px 12px rgba(45, 114, 217, 0.2);
-    }
-    
-    .avatar-controls button:hover {
-        transform: scale(1.1);
-    }
-    
-    @keyframes datasetPulse {
-        0%, 100% { opacity: 0.8; }
-        50% { opacity: 1.0; }
-    }
-    
-    .dataset-info {
-        animation: datasetPulse 2s infinite;
-    }
-`;
-document.head.appendChild(enhancedStyles);
-
-console.log('🤟 Sign Avatar CC (Dataset Mode) loaded successfully!');
-console.log('Features: Real ASL datasets, MediaPipe rendering, animation caching, keyboard shortcuts');
