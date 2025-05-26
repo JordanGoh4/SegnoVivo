@@ -76,3 +76,20 @@ http://www.bu.edu/asllrp/av/dai-asllvd.html
 How2Sign
 data/how2sign_instructions.txt
 https://how2sign.github.io/
+
+Predictor:
+collecting_sign_data.py: Records hand landmark gestures for us to label gestures to train up the model
+train_model.py: Trains an LSTM model on collecting sequence3s and generates a gesture_model.h5 and label_map,npy
+live_predict.py: Runs the real-time prediction
+check_label_map.pyL Debugs to verify integrity and contents of the label map
+
+This predictor also needs the tensorflow library
+
+Usage:
+Running python collecting_sign_data.py starts the data collection, r to record, e to stop and label the sequence, and q to quit
+Data will then be stored in the sequence_data file.
+
+After that, running python train_model.py will load all the sequences in sequence_data, pad them to uniform length, and then train an LSTM Model.
+Currently, I have only trained 2 gestures so we got to train it up more before we submit. Also we cannot just add on to the dataset after training the model, we got to make sure all data is trained befire we run the train_model file if not we need to delete the sequence_data file and start over again.
+
+python live_predict.py runs the live predictor
