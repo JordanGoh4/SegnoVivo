@@ -12,13 +12,11 @@ class OpenSourceAvatarGenerator:
     """
     
     def __init__(self):
-        # Initialize MediaPipe
         self.mp_hands = mp.solutions.hands
         self.mp_pose = mp.solutions.pose
         self.mp_face = mp.solutions.face_mesh
         self.mp_drawing = mp.solutions.drawing_utils
         
-        # Initialize pose estimators
         self.hands_detector = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
@@ -42,10 +40,8 @@ class OpenSourceAvatarGenerator:
             min_tracking_confidence=0.5
         )
         
-        # Load handshape configurations
         self.asl_handshapes = ASL_HANDSHAPES
         
-        # Initialize pose generation methods
         self.pose_generators = {
             "wave": self.generate_wave_movement,
             "forward_from_chin": self.generate_forward_movement, 
@@ -69,21 +65,17 @@ class OpenSourceAvatarGenerator:
             for word in words:
                 word_upper = word.upper()
                 
-                # Try to get real dataset information
                 sign_data = get_sign_data(word_upper)
                 
                 if sign_data:
-                    # Generate animation from real dataset
                     word_animation = await self.generate_from_dataset(word, sign_data)
                     animation_sequence.append(word_animation)
                     total_frames += word_animation["frame_count"]
                 else:
-                    # Generate fingerspelling for unknown words
                     fingerspell_animation = self.generate_fingerspelling_animation(word)
                     animation_sequence.append(fingerspell_animation)
                     total_frames += fingerspell_animation["frame_count"]
             
-            # Create complete animation data
             avatar_data = {
                 "type": "real_dataset_poses",
                 "asl_gloss": asl_gloss,
@@ -112,27 +104,21 @@ class OpenSourceAvatarGenerator:
         dataset_source = sign_data.get("dataset", "unknown")
         
         if dataset_source == "asllvd" and "pose_coordinates" in sign_data:
-            # ASLLVD has actual pose coordinates
             return await self.generate_from_pose_coordinates(word, sign_data)
         
         elif dataset_source == "how2sign" and "pose_keypoints" in sign_data:
-            # How2Sign has keypoint sequences
             return await self.generate_from_keypoints(word, sign_data)
         
         elif dataset_source == "wlasl" and "keypoints" in sign_data:
-            # WLASL has keypoint data
             return await self.generate_from_wlasl_keypoints(word, sign_data)
         
         elif dataset_source == "asl_lex":
-            # ASL-LEX has linguistic properties - use for informed generation
             return await self.generate_from_linguistic_properties(word, sign_data)
         
         elif dataset_source == "ms_asl" and "pose_sequence" in sign_data:
-            # MS-ASL has pose sequences
             return await self.generate_from_pose_sequence(word, sign_data)
         
         elif dataset_source == "fallback":
-            # Use fallback generation for basic signs
             return await self.generate_from_fallback(word, sign_data)
         
         else:
@@ -150,7 +136,6 @@ class OpenSourceAvatarGenerator:
         frame_count = len(coordinates)
         
         for i, coord_set in enumerate(coordinates):
-            # Convert ASLLVD coordinates to MediaPipe format
             mediapipe_landmarks = self.convert_to_mediapipe_format(coord_set)
             
             frames.append({
@@ -179,7 +164,6 @@ class OpenSourceAvatarGenerator:
         frame_count = len(keypoints)
         
         for i, keypoint_frame in enumerate(keypoints):
-            # Extract hand landmarks from full-body keypoints
             hand_landmarks = self.extract_hand_landmarks(keypoint_frame)
             
             frames.append({
@@ -205,7 +189,6 @@ class OpenSourceAvatarGenerator:
         frame_count = len(keypoints)
         
         for i, kp_frame in enumerate(keypoints):
-            # Process WLASL keypoint format
             hand_landmarks = self.process_wlasl_keypoints(kp_frame)
             
             frames.append({
@@ -226,17 +209,14 @@ class OpenSourceAvatarGenerator:
     
     async def generate_from_linguistic_properties(self, word: str, sign_data: Dict) -> Dict:
         """Generate animation based on ASL-LEX linguistic properties"""
-        # Use linguistic properties to inform generation
         handshape_1 = sign_data.get("handshape_1", "")
         handshape_2 = sign_data.get("handshape_2", "")
         movement = sign_data.get("movement", "")
         location = sign_data.get("location", "")
         complexity = sign_data.get("complexity", 3)
         
-        # Generate frames based on complexity and movement type
-        frame_count = max(18, int(complexity * 6))  # More complex signs take longer
+        frame_count = max(18, int(complexity * 6))  
         
-        # Select appropriate movement generator
         movement_type = self.map_movement_to_generator(movement)
         frames = await self.generate_movement_sequence(movement_type, frame_count, location)
         
@@ -265,7 +245,6 @@ class OpenSourceAvatarGenerator:
         frame_count = len(pose_sequence)
         
         for i, pose_frame in enumerate(pose_sequence):
-            # Convert MS-ASL pose format to MediaPipe
             hand_landmarks = self.convert_ms_asl_pose(pose_frame)
             
             frames.append({
@@ -289,7 +268,6 @@ class OpenSourceAvatarGenerator:
         frame_count = sign_data.get("frames", 24)
         location = sign_data.get("location", "neutral")
         
-        # Use existing movement generators
         if movement in self.pose_generators:
             frames = await self.generate_movement_sequence(movement, frame_count, location)
         else:
@@ -308,12 +286,10 @@ class OpenSourceAvatarGenerator:
     
     async def generate_from_properties(self, word: str, sign_data: Dict) -> Dict:
         """Generate animation from whatever properties are available"""
-        # Extract any available movement/location information
         movement = "static"
         location = "neutral" 
         frame_count = 24
         
-        # Look for movement clues in the data
         for key, value in sign_data.items():
             if "movement" in key.lower() and isinstance(value, str):
                 movement = value.lower()
@@ -431,7 +407,7 @@ class OpenSourceAvatarGenerator:
     def generate_point_self_movement(self, frame_count: int, location: str = "chest") -> List[Dict]:
         """Generate pointing to self movement"""
         frames = []
-        chest_x, chest_y = 0.5, 0.7  # Point to chest
+        chest_x, chest_y = 0.5, 0.7  
         
         for frame in range(frame_count):
             frames.append({
@@ -475,8 +451,8 @@ class OpenSourceAvatarGenerator:
     def generate_mouth_to_hand_movement(self, frame_count: int, location: str = "neutral") -> List[Dict]:
         """Generate movement from mouth to hand"""
         frames = []
-        mouth_x, mouth_y = 0.5, 0.35  # Mouth position
-        hand_x, hand_y = 0.4, 0.6     # Other hand position
+        mouth_x, mouth_y = 0.5, 0.35  
+        hand_x, hand_y = 0.4, 0.6     
         
         for frame in range(frame_count):
             progress = frame / (frame_count - 1) if frame_count > 1 else 0
@@ -554,7 +530,7 @@ class OpenSourceAvatarGenerator:
     def generate_letter_frames(self, letter: str, frame_count: int) -> List[Dict]:
         """Generate frames for fingerspelling a single letter"""
         frames = []
-        pos_x, pos_y = 0.6, 0.5  # Fingerspelling space
+        pos_x, pos_y = 0.6, 0.5  
         
         for frame in range(frame_count):
             frames.append({
@@ -572,26 +548,21 @@ class OpenSourceAvatarGenerator:
         
         return frames
     
-    # Helper methods for dataset format conversion
+    
     def convert_to_mediapipe_format(self, coordinates) -> List[Dict]:
         """Convert various coordinate formats to MediaPipe format"""
-        # This would contain specific conversion logic for each dataset format
-        # For now, return basic format
         return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
     
     def extract_hand_landmarks(self, full_body_keypoints) -> List[Dict]:
         """Extract hand landmarks from full-body keypoint data"""
-        # Extract just the hand parts from full-body pose data
         return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
     
     def process_wlasl_keypoints(self, wlasl_keypoints) -> List[Dict]:
         """Process WLASL-specific keypoint format"""
-        # Convert WLASL keypoint format to MediaPipe
         return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
     
     def convert_ms_asl_pose(self, ms_asl_pose) -> List[Dict]:
         """Convert MS-ASL pose format to MediaPipe"""
-        # Convert MS-ASL specific format
         return [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}]
     
     async def _generate_error_response(self, asl_gloss: str) -> Dict:

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign Avatar CC</title>
   <style>
-    /* Root CSS variables for consistent theming */
     :root {
       --primary: #2d72d9;
       --primary-dark: #1a5dc7;
@@ -16,7 +15,7 @@
       --shadow: rgba(0, 0, 0, 0.1);
     }
 
-    /* Reset and base styles */
+ 
     * {
       margin: 0;
       padding: 0;
@@ -63,7 +62,6 @@
       margin-top: 4px;
     }
 
-    /* Status section styling */
     .status {
       padding: 20px;
       background-color: var(--card);
@@ -100,7 +98,7 @@
       font-weight: 500;
     }
 
-    /* Activate button styling */
+
     .activate-btn {
       background: var(--secondary);
       color: white;
@@ -129,7 +127,6 @@
       background: #e6850e;
     }
 
-    /* Settings section styling */
     .settings {
       padding: 20px;
       background-color: var(--card);
@@ -165,7 +162,6 @@
       margin-top: 2px;
     }
 
-    /* Toggle switch styling */
     .switch {
       position: relative;
       display: inline-block;
@@ -211,7 +207,6 @@
       transform: translateX(25px);
     }
 
-    /* Range slider styling for avatar size */
     .range-control {
       width: 100%;
       display: flex;
@@ -254,12 +249,10 @@
       color: var(--primary);
     }
 
-    /* Avatar size container - initially hidden */
     .avatar-size-container {
       display: none;
     }
 
-    /* Footer section styling */
     .footer {
       padding: 15px 20px;
       background-color: #f8f9fa;
@@ -272,13 +265,11 @@
       color: #666;
     }
 
-    /* Utility classes */
     .flex-column {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    /* Responsive adjustments */
     @media (max-height: 600px) {
       body {
         height: auto;
@@ -288,7 +279,6 @@
   </style>
 </head>
 <body>
-  <!-- Header section with logo and title -->
   <div class="header">
     <div class="logo">
       <span class="logo-icon">🤟</span>
@@ -297,7 +287,7 @@
     <div class="subtitle">AI-Powered Sign Language Captions</div>
   </div>
 
-  <!-- Status section showing current state -->
+
   <div class="status">
     <div class="status-row">
       <div class="status-info">
@@ -306,7 +296,6 @@
       </div>
     </div>
     
-    <!-- Main activate/deactivate button -->
     <button class="activate-btn" id="activateBtn">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -315,11 +304,9 @@
     </button>
   </div>
 
-  <!-- Settings section with all configuration options -->
   <div class="settings">
     <div class="settings-title">Settings</div>
     
-    <!-- Auto-start setting -->
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">Auto-start on video pages</span>
@@ -331,7 +318,7 @@
       </label>
     </div>
 
-    <!-- Picture-in-Picture mode setting -->
+
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">Picture-in-Picture mode</span>
@@ -343,7 +330,7 @@
       </label>
     </div>
 
-    <!-- High contrast mode setting -->
+
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">High contrast mode</span>
@@ -355,7 +342,7 @@
       </label>
     </div>
 
-    <!-- Sign language avatar setting -->
+
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">Show sign language avatar</span>
@@ -367,7 +354,6 @@
       </label>
     </div>
 
-    <!-- Avatar size setting (shown only when avatar is enabled) -->
     <div class="settings-item avatar-size-container" id="avatarSizeContainer">
       <div class="flex-column" style="width: 100%;">
         <span class="settings-label">Avatar size</span>
@@ -379,7 +365,7 @@
       </div>
     </div>
 
-    <!-- Show all captions setting -->
+  
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">Show all captions</span>
@@ -391,7 +377,7 @@
       </label>
     </div>
 
-    <!-- This highlights fingerspelled words setting -->
+
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">Highlight fingerspelled words</span>
@@ -403,7 +389,7 @@
       </label>
     </div>
 
-    <!-- For people to hide el and keep only ASL gloss-->
+
     <div class="settings-item">
       <div class="flex-column">
         <span class="settings-label">ASL-only mode</span>

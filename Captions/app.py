@@ -10,25 +10,25 @@ import json
 import time
 import asyncio
 
-# Import our custom modules
+
 from avatar_generator import OpenSourceAvatarGenerator
 from asl_translator import ASLGPC12Translator
 
-# Download NLTK resources if not already downloaded
+
 nltk.download('punkt', quiet=True)
 
-# Initialize components
+
 asl_translator = ASLGPC12Translator()
 avatar_generator = OpenSourceAvatarGenerator()
 
 app = Flask(__name__)
 CORS(app)
 
-# Create necessary directories
+
 os.makedirs('static/animations', exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
-# Load Whisper model
+
 model = whisper.load_model('base')
 
 @app.route('/static/animations/<path:filename>')
@@ -111,7 +111,7 @@ def generate_avatar():
         
         print(f"Generating open-source avatar for: {asl_gloss}")
         
-        # Generate avatar using MediaPipe
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
@@ -119,7 +119,7 @@ def generate_avatar():
             avatar_generator.generate_avatar_animation(asl_gloss, method)
         )
         
-        # Save the animation data
+
         animation_id = str(uuid.uuid4())
         animation_path = f"static/animations/{animation_id}.json"
         
@@ -254,7 +254,6 @@ def export_animation(animation_id):
         if export_format == 'json':
             return jsonify(animation_data)
         elif export_format == 'csv':
-            # Convert to CSV format for data analysis
             csv_data = []
             if 'animation_data' in animation_data and 'animation_sequence' in animation_data['animation_data']:
                 for word_anim in animation_data['animation_data']['animation_sequence']:
@@ -276,7 +275,6 @@ def export_animation(animation_id):
                 "total_points": len(csv_data)
             })
         elif export_format == 'mediapipe':
-            # Export in MediaPipe-compatible format
             mp_data = {
                 "landmarks": [],
                 "metadata": {
@@ -305,7 +303,6 @@ def export_animation(animation_id):
 def health_check():
     """Health check endpoint"""
     try:
-        # Test MediaPipe initialization
         mp_status = "operational" if avatar_generator.hands_detector else "failed"
         
         return jsonify({

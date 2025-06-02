@@ -14,7 +14,6 @@ class ASLDatasetLoader:
         self.data_dir = "data"
         self.ensure_data_directory()
         
-        # Available datasets
         self.datasets = {
             "wlasl": {
                 "name": "WLASL (Word-Level ASL)",
@@ -53,7 +52,6 @@ class ASLDatasetLoader:
             }
         }
         
-        # Load available datasets
         self.loaded_datasets = {}
         self.pose_data = {}
         self.handshape_data = {}
@@ -70,7 +68,6 @@ class ASLDatasetLoader:
         """Load all available datasets from files or download if needed"""
         print("Loading ASL datasets...")
         
-        # Try to load each dataset
         for dataset_id, dataset_info in self.datasets.items():
             file_path = os.path.join(self.data_dir, dataset_info["file"])
             
@@ -80,7 +77,6 @@ class ASLDatasetLoader:
                 print(f"Dataset {dataset_info['name']} not found at {file_path}")
                 self.create_download_instructions(dataset_id, dataset_info)
         
-        # If no datasets are available, load basic fallback
         if not self.loaded_datasets:
             print("No datasets found. Loading basic fallback signs...")
             self.load_basic_fallback()
@@ -106,7 +102,6 @@ class ASLDatasetLoader:
             df = pd.read_csv(file_path)
             
             if dataset_id == "asl_lex":
-                # Process ASL-LEX data
                 pose_data = {}
                 for _, row in df.iterrows():
                     sign = row.get('Sign', '').upper()
@@ -155,7 +150,6 @@ class ASLDatasetLoader:
         for item in data:
             gloss = item.get('gloss', '').upper()
             if gloss:
-                # Extract pose information from WLASL annotations
                 pose_info = {
                     "word": gloss,
                     "instances": item.get('instances', []),
@@ -163,7 +157,6 @@ class ASLDatasetLoader:
                     "dataset": "wlasl"
                 }
                 
-                # If pose keypoints are available, extract them
                 if 'keypoints' in item:
                     pose_info["keypoints"] = item['keypoints']
                     pose_info["frame_count"] = len(item['keypoints'])
@@ -306,7 +299,6 @@ File Format: {dataset_info['format']}
             "datasets_info": {}
         }
         
-        # Count signs per dataset
         for dataset_name in self.loaded_datasets.keys():
             count = len([sign for sign in self.pose_data.values() if sign.get("dataset") == dataset_name])
             stats["datasets_info"][dataset_name] = {
@@ -343,13 +335,10 @@ File Format: {dataset_info['format']}
         
         return self.pose_data
 
-# Initialize the dataset loader
 dataset_loader = ASLDatasetLoader()
 
-# Export the data for use by other modules
 ASL_POSES = dataset_loader.pose_data
 ASL_HANDSHAPES = {
-    # Basic handshape definitions that work with any dataset
     "flat_hand": {"description": "Flat palm, all fingers extended"},
     "index_point": {"description": "Index finger pointing, others closed"},
     "fist": {"description": "All fingers closed into fist"},
@@ -358,7 +347,6 @@ ASL_HANDSHAPES = {
     "thumbs_up": {"description": "Thumb extended upward"}
 }
 
-# Utility functions for easy access
 def get_sign_data(word: str) -> Optional[Dict]:
     """Get pose data for a specific word"""
     return dataset_loader.get_sign_data(word)
@@ -375,7 +363,6 @@ def search_signs(query: str, limit: int = 10) -> List[Dict]:
     """Search for signs matching a query"""
     return dataset_loader.search_signs(query, limit)
 
-# Print dataset loading results
 if __name__ == "__main__":
     print("=" * 60)
     print("ASL DATASET LOADER RESULTS")

@@ -16,7 +16,7 @@ let isAvatarDisplayed = false;
 let currentAvatarAnimations = new Map();
 let animationCache = new Map();
 
-// Enhanced Avatar Renderer for Real Dataset Animations
+
 class DatasetAvatarRenderer {
     constructor(container, size = 150) {
         this.container = container;
@@ -46,7 +46,6 @@ class DatasetAvatarRenderer {
         this.container.innerHTML = '';
         this.container.appendChild(this.canvas);
         
-        // Initialize drawing settings
         this.setupDrawingContext();
     }
     
@@ -73,7 +72,6 @@ class DatasetAvatarRenderer {
             backdrop-filter: blur(10px);
         `;
         
-        // Play/Pause button
         const playBtn = this.createControlButton('▶️', () => {
             if (this.isPlaying) {
                 this.pause();
@@ -84,19 +82,16 @@ class DatasetAvatarRenderer {
             }
         });
         
-        // Reset button
         const resetBtn = this.createControlButton('⏮️', () => {
             this.reset();
             playBtn.textContent = '▶️';
         });
         
-        // Speed control
         const speedBtn = this.createControlButton('1x', () => {
             this.cycleSpeed();
             speedBtn.textContent = `${this.animationSpeed}x`;
         });
         
-        // Quality indicator
         const qualityIndicator = document.createElement('div');
         qualityIndicator.className = 'quality-indicator';
         qualityIndicator.style.cssText = `
@@ -155,10 +150,8 @@ class DatasetAvatarRenderer {
             this.currentAnimation = animationData;
             this.frameIndex = 0;
             
-            // Update quality indicator based on data source
             this.updateQualityIndicator(animationData);
             
-            // Handle different animation types from real datasets
             if (animationData.type === 'real_dataset_poses') {
                 await this.loadDatasetAnimation(animationData);
             } else if (animationData.type === 'mediapipe_poses') {
@@ -233,7 +226,7 @@ class DatasetAvatarRenderer {
             this.frameIndex++;
             
             if (this.frameIndex >= this.totalFrames) {
-                this.frameIndex = 0; // Loop animation
+                this.frameIndex = 0; 
             }
             
             const frameDelay = (1000 / this.fps) / this.animationSpeed;
@@ -261,7 +254,6 @@ class DatasetAvatarRenderer {
     render() {
         if (!this.ctx) return;
         
-        // Clear canvas
         this.clearCanvas();
         
         if (this.errorMode) {
@@ -274,7 +266,6 @@ class DatasetAvatarRenderer {
             this.renderFallback();
         }
         
-        // Add frame progress indicator
         this.renderProgressIndicator();
     }
     
@@ -286,7 +277,6 @@ class DatasetAvatarRenderer {
     renderDatasetAnimation() {
         if (!this.animationSequence || this.animationSequence.length === 0) return;
         
-        // Find current word and frame within that word
         let currentFrame = this.frameIndex;
         let currentWordData = null;
         let frameInWord = 0;
@@ -302,7 +292,6 @@ class DatasetAvatarRenderer {
         
         if (!currentWordData) return;
         
-        // Render based on dataset quality
         const quality = currentWordData.quality || 'basic';
         
         if (quality === 'high' && currentWordData.frames && currentWordData.frames[frameInWord]) {
@@ -315,7 +304,6 @@ class DatasetAvatarRenderer {
             this.renderBasicFrame(currentWordData, frameInWord);
         }
         
-        // Show current word
         this.renderCurrentWord(currentWordData.word, currentWordData.dataset);
     }
     
@@ -323,32 +311,25 @@ class DatasetAvatarRenderer {
         const frame = wordData.frames[frameIndex];
         if (!frame || !frame.hand_landmarks) return;
         
-        // Draw hand landmarks from real dataset
         this.drawHandLandmarks(frame.hand_landmarks, '#4ecdc4', 'Real Data');
         
-        // Draw movement trails for better visualization
         if (frameIndex > 0) {
             this.drawMovementTrail(wordData.frames, frameIndex);
         }
         
-        // Show handshape if available
+
         if (frame.handshape) {
             this.drawHandshapeLabel(frame.handshape);
         }
     }
     
     renderMediumQualityFrame(wordData, frameIndex) {
-        // Use linguistic properties to render informed animation
         const properties = wordData.linguistic_properties;
         if (!properties) return;
         
-        // Generate position based on movement and location
         const position = this.calculatePositionFromProperties(properties, frameIndex, wordData.frame_count);
         
-        // Draw hand position
         this.drawHandPosition(position.x, position.y, '#ff9800', 'Linguistic');
-        
-        // Show complexity indicator
         if (properties.complexity) {
             this.drawComplexityIndicator(properties.complexity);
         }
@@ -361,15 +342,11 @@ class DatasetAvatarRenderer {
         
         if (!currentLetter) return;
         
-        // Draw fingerspelling position
         this.drawFingerspellingLetter(currentLetter, frameIndex % lettersPerFrame, lettersPerFrame);
-        
-        // Show letter sequence progress
         this.drawLetterProgress(wordData.letters, currentLetterIndex);
     }
     
     renderBasicFrame(wordData, frameIndex) {
-        // Basic animation based on available data
         const movement = wordData.movement || 'static';
         const location = wordData.location || 'neutral';
         
@@ -386,13 +363,11 @@ class DatasetAvatarRenderer {
             const x = landmark.x * this.canvas.width;
             const y = landmark.y * this.canvas.height;
             
-            // Draw landmark point
+
             this.ctx.beginPath();
             this.ctx.arc(x, y, 3, 0, 2 * Math.PI);
             this.ctx.fill();
-            
-            // Draw connections between landmarks (simplified hand structure)
-            if (index > 0 && index % 4 !== 1) { // Connect fingers
+            if (index > 0 && index % 4 !== 1) { 
                 const prevLandmark = landmarks[index - 1];
                 const prevX = prevLandmark.x * this.canvas.width;
                 const prevY = prevLandmark.y * this.canvas.height;
@@ -404,7 +379,6 @@ class DatasetAvatarRenderer {
             }
         });
         
-        // Label the data source
         this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
         this.ctx.font = '10px Arial';
         this.ctx.fillText(label, this.canvas.width - 40, 15);
@@ -439,20 +413,17 @@ class DatasetAvatarRenderer {
         const canvasX = x * this.canvas.width;
         const canvasY = y * this.canvas.height;
         
-        // Draw hand position
         this.ctx.fillStyle = color;
         this.ctx.beginPath();
         this.ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI);
         this.ctx.fill();
         
-        // Draw hand outline
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 2;
         this.ctx.beginPath();
         this.ctx.arc(canvasX, canvasY, 15, 0, 2 * Math.PI);
         this.ctx.stroke();
         
-        // Label
         this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
         this.ctx.font = '10px Arial';
         this.ctx.fillText(label, this.canvas.width - 40, 15);
@@ -461,20 +432,16 @@ class DatasetAvatarRenderer {
     drawFingerspellingLetter(letter, frameInLetter, totalFramesForLetter) {
         const x = 0.65 * this.canvas.width;
         const y = 0.5 * this.canvas.height;
-        
-        // Draw letter
         this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
         this.ctx.font = 'bold 24px Arial';
         this.ctx.fillText(letter, x, y);
         
-        // Draw fingerspelling indicator
         this.ctx.strokeStyle = '#ff5722';
         this.ctx.lineWidth = 3;
         this.ctx.beginPath();
         this.ctx.arc(x, y + 20, 10, 0, 2 * Math.PI);
         this.ctx.stroke();
         
-        // Animate the letter appearance
         const opacity = Math.sin((frameInLetter / totalFramesForLetter) * Math.PI);
         this.ctx.globalAlpha = opacity;
         this.ctx.fillStyle = '#ff5722';
@@ -512,7 +479,6 @@ class DatasetAvatarRenderer {
         const baseX = 0.5;
         const baseY = 0.5;
         
-        // Modify position based on movement type
         const movement = properties.movement || '';
         let x = baseX;
         let y = baseY;
@@ -534,12 +500,10 @@ class DatasetAvatarRenderer {
         const progress = frameIndex / totalFrames;
         let baseX = 0.5, baseY = 0.5;
         
-        // Adjust base position by location
         if (location.includes('chest')) baseY = 0.6;
         if (location.includes('head')) baseY = 0.3;
         if (location.includes('side')) baseX = 0.7;
         
-        // Apply movement
         let x = baseX, y = baseY;
         if (movement === 'wave') {
             x = baseX + 0.05 * Math.sin(progress * Math.PI * 4);
@@ -553,13 +517,11 @@ class DatasetAvatarRenderer {
     }
     
     renderCurrentWord(word, dataset) {
-        // Word display
         this.ctx.fillStyle = settings.highContrast ? '#ffffff' : '#333333';
         this.ctx.font = 'bold 16px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.fillText(word, this.canvas.width / 2, this.canvas.height - 40);
         
-        // Dataset source
         this.ctx.fillStyle = '#666666';
         this.ctx.font = '10px Arial';
         this.ctx.fillText(`Source: ${dataset}`, this.canvas.width / 2, this.canvas.height - 25);
@@ -572,11 +534,9 @@ class DatasetAvatarRenderer {
         const x = 10;
         const y = this.canvas.height - 10;
         
-        // Background
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.fillRect(x, y, barWidth, barHeight);
         
-        // Progress
         this.ctx.fillStyle = '#4ecdc4';
         this.ctx.fillRect(x, y, barWidth * progress, barHeight);
     }
@@ -598,7 +558,6 @@ class DatasetAvatarRenderer {
     }
 }
 
-// Rest of the content.js remains the same for DOM manipulation
 document.addEventListener('signAvatarSettingsChanged', (event) => {
     settings = event.detail;
 
@@ -771,14 +730,14 @@ async function createAvatar() {
 
 async function generateDatasetAvatarForSegment(aslGloss, containerElement) {
     try {
-        // Check cache first
+
         if (animationCache.has(aslGloss)) {
             const cachedData = animationCache.get(aslGloss);
             renderCachedAvatar(cachedData, containerElement);
             return;
         }
 
-        // Call the backend to generate the animation using real datasets
+        
         const response = await fetch("http://localhost:5000/generate-avatar", {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
@@ -795,24 +754,18 @@ async function generateDatasetAvatarForSegment(aslGloss, containerElement) {
         const data = await response.json();
         
         if (data.success) {
-            // Cache the animation data
             animationCache.set(aslGloss, data);
             
-            // Create and initialize the dataset avatar renderer
             const renderer = new DatasetAvatarRenderer(containerElement, settings.avatarSize);
             
-            // Load the real dataset animation
-            await renderer.loadAnimation(data.data);
             
-            // Store renderer for later control
+            await renderer.loadAnimation(data.data);
             currentAvatarAnimations.set(aslGloss, renderer);
             
-            // Auto-play the animation
             setTimeout(() => {
                 renderer.play();
             }, 500);
             
-            // Add dataset info display
             addDatasetInfo(containerElement, data);
             
         } else {
@@ -834,7 +787,6 @@ function renderCachedAvatar(cachedData, containerElement) {
 }
 
 function addDatasetInfo(containerElement, avatarData) {
-    // Add dataset information overlay
     const infoDiv = document.createElement('div');
     infoDiv.className = 'dataset-info';
     infoDiv.style.cssText = `
@@ -855,8 +807,6 @@ function addDatasetInfo(containerElement, avatarData) {
     
     infoDiv.innerHTML = `📊 ${method}`;
     infoDiv.title = `Data source: ${dataSource}\nLibraries: ${avatarData.libraries_used?.join(', ') || 'unknown'}`;
-    
-    // Show/hide on hover
     containerElement.addEventListener('mouseenter', () => {
         infoDiv.style.opacity = '1';
     });
@@ -898,7 +848,6 @@ function syncCaptionsWithVideo() {
                 caption.style.border = '2px solid rgba(45, 114, 217, 0.3)';
                 foundActiveCaption = true;
                 
-                // Auto-play avatar animation for current caption
                 const aslText = caption.querySelector('.asl-text').textContent;
                 const renderer = currentAvatarAnimations.get(aslText);
                 if (renderer && !renderer.isPlaying) {
@@ -914,7 +863,6 @@ function syncCaptionsWithVideo() {
             }
         });
         
-        // If no active caption, show all if setting enabled
         if (!foundActiveCaption && settings.showAllCaptions) {
             captions.forEach(caption => {
                 caption.style.display = 'block';
@@ -928,7 +876,6 @@ function syncCaptionsWithVideo() {
 
 function removeAvatar() {
     if (avatarDiv) {
-        // Clean up all avatar renderers
         currentAvatarAnimations.forEach(renderer => {
             renderer.pause();
         });
@@ -963,13 +910,11 @@ function applyAvatarStyles() {
         });
     }
     
-    // Apply avatar-specific settings
     const avatarContainers = avatarDiv.querySelectorAll('.dataset-avatar-container');
     avatarContainers.forEach(container => {
         container.style.display = settings.showAvatar ? 'block' : 'none';
         container.style.height = `${settings.avatarSize}px`;
         
-        // Update canvas size for existing renderers
         const canvas = container.querySelector('canvas');
         if (canvas) {
             canvas.width = settings.avatarSize;
@@ -978,7 +923,6 @@ function applyAvatarStyles() {
         }
     });
     
-    // Apply ASL-only mode
     if (settings.aslOnly) {
         const englishTexts = avatarDiv.querySelectorAll('.english-text');
         englishTexts.forEach(text => {
@@ -991,13 +935,11 @@ function applyAvatarStyles() {
         });
     }
     
-    // Apply fingerspelling highlighting
     if (settings.highlightFingerspelling) {
         const aslTexts = avatarDiv.querySelectorAll('.asl-text');
         aslTexts.forEach(text => {
             const words = text.textContent.split(' ');
             const highlightedWords = words.map(word => {
-                // Highlight words that are likely fingerspelled (all caps, not common ASL words)
                 const commonASLWords = ['I', 'YOU', 'ME', 'HELLO', 'THANK-YOU', 'GOOD', 'BAD', 'YES', 'NO'];
                 if (word.length > 2 && !commonASLWords.includes(word)) {
                     return `<span style="background: rgba(255, 152, 0, 0.3); padding: 2px 4px; border-radius: 3px;" title="Likely fingerspelled">${word}</span>`;
@@ -1023,7 +965,6 @@ function setUpPipObserver(){
                 avatarDiv.style.maxWidth = '200px';
                 avatarDiv.style.fontSize = '12px';
                 
-                // Resize avatar renderers for PiP
                 currentAvatarAnimations.forEach(renderer => {
                     if (renderer.canvas) {
                         renderer.canvas.width = 100;
@@ -1040,8 +981,6 @@ function setUpPipObserver(){
         if (avatarDiv) {
             avatarDiv.style.maxWidth = '350px';
             avatarDiv.style.fontSize = '';
-            
-            // Restore avatar renderer sizes
             currentAvatarAnimations.forEach(renderer => {
                 if (renderer.canvas) {
                     renderer.canvas.width = settings.avatarSize;
@@ -1084,7 +1023,6 @@ function makeAvatarDraggable() {
     });
 }
 
-// Performance optimization: Debounce avatar generation
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -1096,22 +1034,17 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
-
-// Debounced avatar generation for better performance
 const debouncedAvatarGeneration = debounce(generateDatasetAvatarForSegment, 300);
 
-// Add keyboard shortcuts for avatar control
+
 document.addEventListener('keydown', (e) => {
     if (!avatarDiv || !settings.active) return;
-    
-    // Only process if not typing in an input field
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     
     switch(e.key) {
         case 'a':
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
-                // Toggle all avatar animations
                 currentAvatarAnimations.forEach(renderer => {
                     if (renderer.isPlaying) {
                         renderer.pause();
@@ -1124,7 +1057,6 @@ document.addEventListener('keydown', (e) => {
         case 'r':
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
-                // Reset all avatar animations
                 currentAvatarAnimations.forEach(renderer => {
                     renderer.reset();
                 });
@@ -1133,7 +1065,6 @@ document.addEventListener('keydown', (e) => {
         case 'h':
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
-                // Toggle high contrast
                 settings.highContrast = !settings.highContrast;
                 applyAvatarStyles();
                 chrome.storage.sync.set({highContrast: settings.highContrast});
@@ -1142,25 +1073,20 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Initialize everything
-initialize();
 
-// Handle YouTube navigation (single-page app)
+initialize();
 let lastURL = location.href;
 new MutationObserver(()=>{
     if (location.href !== lastURL){
         lastURL = location.href;
         
-        // Clean up existing avatars and cache
         removeAvatar();
         animationCache.clear();
         
-        // Reinitialize after navigation
         setTimeout(initialize, 1000);
     }
 }).observe(document, {subtree:true, childList:true});
 
-// Add CSS for enhanced animations
 const enhancedStyles = document.createElement('style');
 enhancedStyles.textContent = `
     .asl-caption {
