@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
+import coverImage from './images/Cover_Image.png'
 import './App.css'
 
 
@@ -19,25 +20,25 @@ function App() {
       <div class="landing-page">
         <header>
           <div class="container">
-            <a href="#" class="logo">Your <b>Website</b></a>
+            <a href="#" class="logo">SegnoVivo</a>
             <ul class="links">
               <li>Home</li>
               <li>About Us</li>
-              <li>Work</li>
+              <li>Translate</li>
               <li>Info</li>
-              <li>Get Started</li>
+              <li>Download</li>
             </ul>
           </div>
         </header>
         <div class="content">
           <div class="container">
             <div class="info">
-              <h1>Looking For Inspiration</h1>
-              <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Repellendus odit nihil ullam nesciunt quidem iste, Repellendus odit nihil</p>
-              <button>Button name</button>
+              <h1>Making Communication Easier With Technology</h1>
+              <p>Utilizing machine learning and artificial intelligence to allow easier understanding of online resources be it videos or audio. With a extension that can be access with any browser, users will be able to view real-life translation with ease</p>
+              <button>Find out more!</button>
             </div>
             <div class="image">
-              <img class="main-image" src="https://cdni.iconscout.com/illustration/premium/thumb/businessman-working-using-vr-tech-3840669-3202986.png?f=webp"/>
+              <img class="main-image" src={coverImage}/>
             </div>
           </div>
         </div>

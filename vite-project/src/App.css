@@ -180,8 +180,8 @@ body {
 
   .main-image{
     /* mix-blend-mode:exclusion */
-    width: 600px;
-    height: 400px;
+    /* width: 600px;
+    height: 400px; */
   }
    h1,p{
     color:white;
