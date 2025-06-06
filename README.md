@@ -40,7 +40,7 @@ Also need to install Flask, Flask-CORS, Torch, OpenAI Whisper, Mediapipe, OpenCV
 pip install flask flask-cors torch \
  git+https://github.com/openai/whisper.git \
  mediapipe==0.10.9 opencv-python numpy pandas requests yt-dlp nltk datasets
-GPT says this link downloads everything but idk LOL
+
 
 Setting of Python Virtual Environment
 1.Cloning of Project: git clone https://github.com/YOUR_USERNAME/sign-avatar-cc.git
