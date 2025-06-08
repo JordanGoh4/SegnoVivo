@@ -9,6 +9,7 @@ import uuid
 import json
 import time
 import asyncio
+from aslgpc12_translator import ASLGPC12Translator
 
 
 from avatar_generator import OpenSourceAvatarGenerator
