@@ -1,4 +1,5 @@
 import coverImage from '../images/Cover_Image.png'
+import "../css/Home.css"
 
 function Home() {
     return (
@@ -11,18 +12,6 @@ function Home() {
     
             </div>
           <div class="landing-page">
-            <header>
-              <div class="container">
-                <a href="#" class="logo">SegnoVivo</a>
-                <ul class="links">
-                  <li>Home</li>
-                  <li><a href='/'>About Us</a></li>
-                  <li>Translate</li>
-                  <li>Info</li>
-                  <li>Download</li>
-                </ul>
-              </div>
-            </header>
             <div class="content">
               <div class="container">
                 <div class="info">
