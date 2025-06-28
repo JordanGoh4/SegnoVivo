@@ -93,3 +93,15 @@ After that, running python train_model.py will load all the sequences in sequenc
 Currently, I have only trained 2 gestures so we got to train it up more before we submit. Also we cannot just add on to the dataset after training the model, we got to make sure all data is trained befire we run the train_model file if not we need to delete the sequence_data file and start over again.
 
 python live_predict.py runs the live predictor
+
+
+For User:
+1.To start frontend: Run npm install
+2.Create .env file with the following content:
+DB_HOST='localhost'
+DB_USER='{Your user}'
+DB_PASS='{Your Password}'
+DB_NAME='{Your database name}'
+JWT_SECRET='{Secret}'
+3.Download MYSQL Workbench and create a database.
+4.Input the username and relevant information into .env file
