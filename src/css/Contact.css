@@ -1,0 +1,155 @@
+.contact-section {
+  font-family: sans-serif;
+  color: #fff;
+}
+
+/* Contact Us Block */
+.contact-us {
+  background-color: #f1f1f1;
+  padding: 120px 20px;
+}
+
+.contact-inner {
+  background-color: #fff;
+  position: relative;
+  border-radius: 25px;
+  box-shadow: 20px 22px 44px #cccc;
+  padding: 60px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.contact-content {
+  display: flex;
+  width: 100%;
+  gap: 30px;
+}
+
+.form-section {
+  flex: 1 1 70%;
+}
+
+.social-section {
+  flex: 1 1 30%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.social-item-inner {
+  display: flex;
+  padding: 0;
+  list-style: none;
+  gap: 15px;
+}
+
+.social-item-inner li a {
+  color: #fff;
+  font-size: 20px;
+}
+
+.right_conatct_social_icon {
+  background: linear-gradient(to top right, #1325e8 -5%, #8f10b7 100%);
+}
+
+/* Contact Form Styles */
+.contact-field h3 {
+  color: #000;
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.contact-field p {
+  color: #000;
+  font-size: 13px;
+  margin-bottom: 35px;
+}
+
+.contact-field .form-control {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.contact-field .form-control:focus {
+  outline: none;
+  border-bottom: 2px solid #1325e8;
+}
+
+.contact-field .form-control::placeholder {
+  font-size: 13px;
+}
+
+.contact-form-submit {
+  background: linear-gradient(to top right, #1325e8 -5%, #8f10b7 100%);
+  border: none;
+  color: #fff;
+  padding: 10px;
+  width: 100%;
+  border-radius: 35px;
+  cursor: pointer;
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin-top: 25px;
+}
+
+/* Contact Info Panel */
+.contact-info-sec {
+  position: absolute;
+  right: 0;
+  top: 18%;
+  width: 340px;
+  height: 340px;
+  background-color: #2d2d2d;
+  border-radius: 25px 0 0 25px;
+  padding: 40px;
+  color: #fff;
+}
+
+.contact-info-sec h4 {
+  letter-spacing: 1px;
+  padding-bottom: 15px;
+}
+
+.info-single {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.info-single i {
+  margin-right: 15px;
+}
+
+.info-single span {
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* Map Section */
+.map-sec {
+  padding: 50px 20px;
+}
+
+.map-inner {
+  text-align: center;
+}
+
+.map-inner h4 {
+  color: #000;
+}
+
+.map-inner p {
+  color: #000;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.map-bind {
+  margin-top: 40px;
+  border-radius: 30px;
+  overflow: hidden;
+}
