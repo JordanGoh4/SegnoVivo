@@ -105,4 +105,3 @@ DB_NAME='{Your database name}'
 JWT_SECRET='{Secret}'
 3.Download MYSQL Workbench and create a database.
 4.Input the username and relevant information into .env file
-Testing
