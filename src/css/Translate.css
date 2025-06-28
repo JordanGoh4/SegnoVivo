@@ -1,0 +1,56 @@
+.translate-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.translate-container h1 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.translate-container p {
+  color: #34495e;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.translation-section {
+  background-color: #f8f9fa;
+  padding: 2rem;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.translation-section h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.camera-section {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  border: 1px solid #e9ecef;
+}
+
+.camera-section h3 {
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.camera-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.camera-btn:hover {
+  background-color: #0056b3;
+} 

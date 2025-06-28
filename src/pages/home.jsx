@@ -2,25 +2,14 @@ import coverImage from '../images/Cover_Image.png'
 import SegnoVivo from '../images/Logo.png'
 import "../css/Home.css"
 import { Link } from 'react-router-dom';
+import { useAuth } from '../services/AuthContext';
 import Navbar from "../components/NavBar"
 
 const Home = () => {
+  const { user } = useAuth();
   return (
    <>
    <div className="segno-vivo-container">
-      <nav className="navbar">
-        <div className="logo">
-          <img src = {SegnoVivo} className='SegnoVivo'></img>
-          SegnoVivo
-        </div>
-        <div className="nav-links">
-          <a href="#home" className="active">Home</a>
-          <a href="#translate">Translate</a>
-          <a href="#about">About</a>
-          <Link to="login" className='nav-links'>Login</Link>
-        </div>
-      </nav>
-
       <main className="hero-section">
         <img className = 'cover_image' src={coverImage}/>
         <h1>Making Communication Easier With Technology</h1>

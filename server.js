@@ -3,6 +3,7 @@ import mysql from 'mysql2/promise';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -62,31 +63,47 @@ app.post('/register', async (req, res) => {
 });
 
 // Login endpoint
-app.post('/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
-      'SELECT * FROM users WHERE username = ?',
+    // 1. Check if user exists
+    const [users] = await pool.query(
+      'SELECT * FROM users WHERE username = ?', 
       [username]
     );
-    connection.release();
     
-    if (rows.length === 0) {
+    if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const user = rows[0];
+    const user = users[0];
+    
+    // 2. Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    res.json({ message: 'Login successful', user: { id: user.id, username: user.username } });
+    // 3. Exclude password from response
+    const { password: _, ...userWithoutPassword } = user;
+    
+    // 4. Generate JWT token (optional but recommended)
+    const token = jwt.sign(
+      { id: user.id }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '1h' }
+    );
+    
+    res.json({ 
+      user: userWithoutPassword,
+      token 
+    });
+    
   } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
