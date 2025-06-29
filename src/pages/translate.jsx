@@ -1,5 +1,6 @@
 import { useAuth } from '../services/AuthContext';
 import '../css/Translate.css';
+import LivePredictionDisplay from '../components/LivePredictionDisplay';  
 
 function Translate() {
   const { user } = useAuth();
@@ -18,6 +19,17 @@ function Translate() {
           <h3>Camera Access</h3>
           <p>Allow camera access to start translation</p>
           <button className="camera-btn">Start Camera</button>
+
+          {/* Real-time prediction display */}
+          <LivePredictionDisplay />
+
+          {/* Webcam placeholder box */}
+          <div className="camera-box">
+            <p><strong>(Webcam view is handled on backend)</strong></p>
+            <div className="fake-camera-box">
+              <p>[ Webcam active on backend ]</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

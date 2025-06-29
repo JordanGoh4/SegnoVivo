@@ -54,3 +54,30 @@
 .camera-btn:hover {
   background-color: #0056b3;
 } 
+
+.prediction-output {
+  margin-top: 1rem;
+  background-color: #f1f3f5;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  color: #212529;
+}
+
+.prediction-output p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.fake-camera-box {
+  width: 480px;
+  height: 360px;
+  background-color: #343a40;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
