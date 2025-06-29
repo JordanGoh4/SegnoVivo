@@ -105,3 +105,11 @@ DB_NAME='{Your database name}'
 JWT_SECRET='{Secret}'
 3.Download MYSQL Workbench and create a database.
 4.Input the username and relevant information into .env file
+
+
+To start backend:
+Run the following line of command in the terminal:(Future additions do not require this step -> Currently unable to host backend online due to cost)
+
+python -m venv venv
+source venv/bin/activate   # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
