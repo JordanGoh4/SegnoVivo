@@ -3,23 +3,25 @@ import mediapipe as mp
 import numpy as np
 import tensorflow as tf
 import time
-import socketio  
+import socketio
 
-# --- Connect to connection.py ---
+# WebSocket client
 sio = socketio.Client()
 
 try:
-    sio.connect("http://localhost:5000")  # To change as required
-    print("Connected to WebSocket server.")
+    sio.connect("http://localhost:5001")
+    print("✅ Connected to WebSocket server.")
 except Exception as e:
-    print("Could not connect to WebSocket server:", e)
+    print("❌ Could not connect to WebSocket server:", e)
 
 def send_prediction(gesture, confidence):
+    print(f"📡 SENDING: {gesture} ({confidence:.2f})")
     sio.emit("prediction", {
         "gesture": gesture,
         "confidence": confidence
     })
 
+# Load model and config
 model = tf.keras.models.load_model('gesture_model.h5')
 label_map = np.load('label_map.npy', allow_pickle=True).item()
 max_sequence_length = model.input_shape[1]
@@ -36,9 +38,9 @@ prediction_interval = 10
 frame_count = 0
 last_prediction = "None"
 confidence_score = 0.0
-prediction_threshold = 0.5
+prediction_threshold = 0.1
 
-print("Live prediction started. Press 'q' to quit.")
+print("🎥 Live prediction started. Press 'q' to quit.")
 
 while True:
     ret, frame = cap.read()
@@ -78,11 +80,8 @@ while True:
                 last_prediction = label_map[predicted_index]
             else:
                 last_prediction = f"Unknown-{predicted_index}"
-
-            
             send_prediction(last_prediction, float(confidence_score))
 
-   
     cv2.putText(frame, f"Gesture: {last_prediction}", (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     cv2.putText(frame, f"Confidence: {confidence_score:.2f}", (10, 70),
@@ -95,4 +94,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-sio.disconnect()  
+sio.disconnect()

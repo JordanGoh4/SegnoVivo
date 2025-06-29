@@ -107,9 +107,15 @@ JWT_SECRET='{Secret}'
 4.Input the username and relevant information into .env file
 
 
-To start backend:
-Run the following line of command in the terminal:(Future additions do not require this step -> Currently unable to host backend online due to cost)
+First time setting up backend:
+Run the following line of command in the terminal to download the required library for the predictor
 
 python -m venv venv
 source venv/bin/activate   # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
+
+
+Once everything has been set up before, below are the steps required:
+1. python connection.py
+2. 2.python live_predict.py
+3. npm start

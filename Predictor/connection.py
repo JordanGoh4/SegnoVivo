@@ -4,11 +4,12 @@ from flask_socketio import SocketIO, emit
 import numpy as np
 import tensorflow as tf
 
+# Initialize app
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# To load both model and label map
+# Load model and label map
 model = tf.keras.models.load_model('gesture_model.h5')
 label_map = np.load('label_map.npy', allow_pickle=True).item()
 max_sequence_length = model.input_shape[1]
@@ -31,14 +32,24 @@ def predict():
 
     return jsonify({"gesture": gesture, "confidence": confidence})
 
-#Some debugging tool to see if we can connect?
 @socketio.on('connect')
 def on_connect():
-    print("Frontend connected")
-    emit("connected", {"message": "Connected to backend"})
+    print("✅ Frontend connected via WebSocket")
+
+@socketio.on("prediction")
+def on_prediction(data):
+    gesture = data.get("gesture", "None")
+    confidence = data.get("confidence", 0.0)
+    print(f"📥 RECEIVED from live_predict.py: {gesture} ({confidence:.2f})")
+    emit("prediction", {"gesture": gesture, "confidence": confidence}, broadcast=True)
 
 def emit_prediction(gesture, confidence):
-    socketio.emit("prediction", {"gesture": gesture, "confidence": confidence})
+    print(f"🌐 EMITTING to frontend: {gesture} ({confidence:.2f})")
+    socketio.emit("prediction", {
+        "gesture": gesture,
+        "confidence": confidence
+    })
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    print("🔌 Running backend on http://0.0.0.0:5001")
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001)
