@@ -95,7 +95,7 @@ Currently, I have only trained 2 gestures so we got to train it up more before w
 python live_predict.py runs the live predictor
 
 
-For User:
+For User (Database):
 1.To start frontend: Run npm install
 2.Create .env file with the following content:
 DB_HOST='localhost'
@@ -103,11 +103,11 @@ DB_USER='{Your user}'
 DB_PASS='{Your Password}'
 DB_NAME='{Your database name}'
 JWT_SECRET='{Secret}'
-3.Download MYSQL Workbench and create a database.
+3.Download MYSQL Workbench and create a database with the root user that will be shown during installation.
 4.Input the username and relevant information into .env file
 
 
-First time setting up backend:
+First time setting up backend (Sign Language Model):
 Run the following line of command in the terminal to download the required library for the predictor. Additional note that you will have to run Python 3.11.4 as Tensorflow currently supports till 3.11.4 only.
 
 python -m venv venv
@@ -117,5 +117,6 @@ pip install -r requirements.txt
 
 Once everything has been set up before, below are the steps required:
 1. python connection.py
-2. 2.python live_predict.py
-3. npm start
+2. python live_predict.py
+3. npm run dev
+4. node server.js
