@@ -1,11 +1,3 @@
-Testing of application:
-Before starting the application, users will have to set up this environment for the project to run locally (Future plans do include hosting it online but it's currently not viable due to cost.
-
-python -m venv venv
-source venv/bin/activate   # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-
-
 The main features of SegnoVivo are split into 2, Captions and Predictor.
 
 Captions:
@@ -113,3 +105,11 @@ DB_NAME='{Your database name}'
 JWT_SECRET='{Secret}'
 3.Download MYSQL Workbench and create a database.
 4.Input the username and relevant information into .env file
+
+
+To start backend:
+Run the following line of command in the terminal:(Future additions do not require this step -> Currently unable to host backend online due to cost)
+
+python -m venv venv
+source venv/bin/activate   # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
