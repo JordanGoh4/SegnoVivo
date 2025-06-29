@@ -1,0 +1,23 @@
+# Flask app + CORS + WebSocket support
+flask
+flask-cors
+flask-socketio
+
+# For making HTTP requests in Python (used by live_predict.py)
+requests
+
+# Machine learning model
+tensorflow
+
+# MediaPipe for hand tracking
+mediapipe
+
+# Webcam input and drawing
+opencv-python
+
+# Data processing
+numpy
+pandas
+
+# For WebSocket client (live_predict.py to send prediction ->Connects front end with backend processing)
+python-socketio
