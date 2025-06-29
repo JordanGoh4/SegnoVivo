@@ -108,7 +108,7 @@ JWT_SECRET='{Secret}'
 
 
 First time setting up backend:
-Run the following line of command in the terminal to download the required library for the predictor
+Run the following line of command in the terminal to download the required library for the predictor. Additional note that you will have to run Python 3.11.4 as Tensorflow currently supports till 3.11.4 only.
 
 python -m venv venv
 source venv/bin/activate   # or venv\Scripts\activate on Windows
