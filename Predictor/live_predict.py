@@ -9,7 +9,7 @@ import socketio
 sio = socketio.Client()
 
 try:
-    sio.connect("http://localhost:5000")  # To change as required
+    sio.connect("http://localhost:5001")  # To change as required
     print("Connected to WebSocket server.")
 except Exception as e:
     print("Could not connect to WebSocket server:", e)
