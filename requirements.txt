@@ -1,23 +1,32 @@
-# Flask app + CORS + WebSocket support
-flask
-flask-cors
-flask-socketio
+# === Flask backend and CORS support ===
+flask==2.3.3
+flask-cors==4.0.0
+flask-socketio==5.3.6
 
-# For making HTTP requests in Python (used by live_predict.py)
-requests
+# === HTTP requests and WebSocket client ===
+requests==2.31.0
+python-socketio==5.8.0
 
-# Machine learning model
-tensorflow
+# === Machine learning model (TensorFlow) ===
+tensorflow==2.13.0  # You can adjust this to match your original version
 
-# MediaPipe for hand tracking
-mediapipe
+# === Whisper transcription ===
+openai-whisper==20231117
+yt-dlp==2023.12.30
+nltk==3.8.1
 
-# Webcam input and drawing
-opencv-python
+# === spaCy for ASL Gloss translation ===
+spacy==3.7.2
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0.tar.gz
 
-# Data processing
-numpy
-pandas
+# === Audio processing ===
+torchaudio==2.1.0
+torch==2.1.0
 
-# For WebSocket client (live_predict.py to send prediction ->Connects front end with backend processing)
-python-socketio
+# === MediaPipe + Computer Vision ===
+mediapipe==0.10.9
+opencv-python==4.9.0.80
+
+# === Data processing ===
+numpy==1.24.3
+pandas==2.1.0
