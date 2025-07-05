@@ -29,27 +29,6 @@ class ASLDatasetLoader:
                 "format": "csv_with_properties",
                 "file": "asl_lex.csv"
             },
-            "ms_asl": {
-                "name": "MS-ASL",
-                "url": "https://www.microsoft.com/en-us/research/project/ms-asl/",
-                "description": "Microsoft's large-scale ASL dataset",
-                "format": "video_annotations",
-                "file": "ms_asl_annotations.json"
-            },
-            "asllvd": {
-                "name": "ASLLVD (ASL Lexicon Video Dataset)",
-                "url": "http://www.bu.edu/asllrp/av/dai-asllvd.html",
-                "description": "Boston University ASL lexicon with pose data",
-                "format": "pose_coordinates",
-                "file": "asllvd_poses.json"
-            },
-            "how2sign": {
-                "name": "How2Sign",
-                "url": "https://how2sign.github.io/",
-                "description": "Large-scale multimodal dataset",
-                "format": "pose_sequences",
-                "file": "how2sign_poses.json"
-            }
         }
         
         self.loaded_datasets = {}
