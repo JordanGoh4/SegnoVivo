@@ -9,31 +9,23 @@ import uuid
 import json
 import time
 import asyncio
+import traceback
 from aslgpc12_translator import ASLGPC12Translator
 from avatar_generator import OpenSourceAvatarGenerator
 from pose_database import get_available_signs
 
-# Initialize NLTK tokenizer
 nltk.download('punkt', quiet=True)
 
-# Initialize translator and avatar generator
 translator = ASLGPC12Translator()
 avatar_generator = OpenSourceAvatarGenerator()
 
-# Flask setup
 app = Flask(__name__)
 CORS(app)
 
-# Create folders if they don't exist
 os.makedirs('static/animations', exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
-# Load Whisper model
 model = whisper.load_model('base')
-
-@app.route('/')
-def home():
-    return '✅ Avatar generator server is running.'
 
 @app.route('/static/animations/<path:filename>')
 def serve_animation(filename):
@@ -43,12 +35,11 @@ def serve_animation(filename):
 def transcribe():
     video_id = request.json['videoId']
     url = f"https://www.youtube.com/watch?v={video_id}"
-    base_filename = f"{video_id}.mp3"
-    final_filename = base_filename + ".mp3"
+    filename_template = f"{video_id}.%(ext)s"
 
     ydl_opt = {
         'format': 'bestaudio/best',
-        'outtmpl': base_filename,
+        'outtmpl': filename_template,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -60,7 +51,11 @@ def transcribe():
         with yt_dlp.YoutubeDL(ydl_opt) as ydl:
             ydl.download([url])
 
-        result = model.transcribe(final_filename)
+        filename = f"{video_id}.mp3"
+        if not os.path.exists(filename):
+            return jsonify({'error': f'Audio file {filename} not found'}), 500
+
+        result = model.transcribe(filename)
         transcript = result['text']
         segments = result.get('segments', [])
 
@@ -87,7 +82,7 @@ def transcribe():
                     "asl_gloss": asl_gloss
                 })
 
-        os.remove(final_filename)
+        os.remove(filename)
 
         return jsonify({
             'transcript': transcript,
@@ -95,8 +90,10 @@ def transcribe():
         })
 
     except Exception as e:
-        if os.path.exists(final_filename):
-            os.remove(final_filename)
+        print("\n❌ ERROR during transcription:")
+        traceback.print_exc()
+        if os.path.exists(f"{video_id}.mp3"):
+            os.remove(f"{video_id}.mp3")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/generate-avatar', methods=['POST'])
@@ -144,6 +141,8 @@ def generate_avatar():
         })
 
     except Exception as e:
+        print("\n❌ ERROR during avatar generation:")
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e)
@@ -152,7 +151,7 @@ def generate_avatar():
 @app.route('/get-pose-database', methods=['GET'])
 def get_pose_database():
     available_signs = get_available_signs()
-    handshapes = list(ASL_HANDSHAPES.keys())
+    handshapes = []  # ASL_HANDSHAPES removed since you're not using it
 
     return jsonify({
         "available_signs": available_signs,
@@ -171,5 +170,4 @@ def get_pose_database():
     })
 
 if __name__ == "__main__":
-    print("✅ Avatar generator ready. Signs loaded:", len(get_available_signs()))
-    app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)

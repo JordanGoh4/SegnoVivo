@@ -136,12 +136,14 @@ function generateDatasetAvatarForSegment(segment, canvas) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data && data.data) {
-            animationCache.set(cacheKey, data.data);
-            const renderer = new DatasetAvatarRenderer(canvas, data.data);
-            renderer.play();
-        }
-    });
+    if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+        animationCache.set(cacheKey, data.data);
+        const renderer = new DatasetAvatarRenderer(canvas, data.data);
+        renderer.play();
+    } else {
+        console.warn("⚠️ Invalid or empty animation data:", data);
+    }
+});
 }
 
 initialize();
