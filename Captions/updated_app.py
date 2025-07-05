@@ -9,6 +9,8 @@ import uuid
 import json
 import time
 import asyncio
+import traceback
+
 from aslgpc12_translator import ASLGPC12Translator
 from avatar_generator import OpenSourceAvatarGenerator
 from pose_database import get_available_signs
@@ -60,6 +62,7 @@ def transcribe():
                 text = segment['text']
                 start = segment['start']
                 end = segment['end']
+                print("🔍 Segment text:", text)
                 asl_gloss = translator.to_gloss(text)
 
                 asl_segments.append({
@@ -71,6 +74,7 @@ def transcribe():
         else:
             sentences = sent_tokenize(transcript)
             for sentence in sentences:
+                print("🔍 Sentence:", sentence)
                 asl_gloss = translator.to_gloss(sentence)
                 asl_segments.append({
                     "english": sentence,
@@ -85,6 +89,8 @@ def transcribe():
         })
 
     except Exception as e:
+        print("❌ Error in /transcribe:")
+        traceback.print_exc()
         if os.path.exists(filename):
             os.remove(filename)
         return jsonify({'error': str(e)}), 500
@@ -134,6 +140,8 @@ def generate_avatar():
         })
 
     except Exception as e:
+        print("❌ Error in /generate-avatar:")
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e)
@@ -142,7 +150,7 @@ def generate_avatar():
 @app.route('/get-pose-database', methods=['GET'])
 def get_pose_database():
     available_signs = get_available_signs()
-    handshapes = list(ASL_HANDSHAPES.keys())
+    handshapes = list(avatar_generator.asl_handshapes.keys())
 
     return jsonify({
         "available_signs": available_signs,
@@ -159,7 +167,3 @@ def get_pose_database():
             "numpy": "Mathematical computations"
         }
     })
-
-if __name__ == "__main__":
-    print("✅ Avatar generator ready. Starting server...")
-    app.run(debug=True, port=5000)
