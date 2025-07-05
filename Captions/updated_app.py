@@ -167,3 +167,8 @@ def get_pose_database():
             "numpy": "Mathematical computations"
         }
     })
+
+# ✅ START THE FLASK SERVER
+if __name__ == "__main__":
+    print("🚀 Starting Deaf Translator Backend on http://localhost:5000")
+    app.run(debug=True, port=5000)
