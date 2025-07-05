@@ -11,7 +11,7 @@ import time
 import asyncio
 from aslgpc12_translator import ASLGPC12Translator
 from avatar_generator import OpenSourceAvatarGenerator
-from pose_database import get_available_signs
+from pose_database import get_available_signs, ASL_HANDSHAPES
 
 nltk.download('punkt', quiet=True)
 
@@ -159,3 +159,7 @@ def get_pose_database():
             "numpy": "Mathematical computations"
         }
     })
+
+if __name__ == "__main__":
+    print("✅ Avatar generator ready. Starting server...")
+    app.run(debug=True, port=5000)
