@@ -11,6 +11,7 @@ import time
 import asyncio
 from aslgpc12_translator import ASLGPC12Translator
 from avatar_generator import OpenSourceAvatarGenerator
+from pose_database import get_available_signs, ASL_HANDSHAPES
 
 nltk.download('punkt', quiet=True)
 
@@ -59,7 +60,6 @@ def transcribe():
                 text = segment['text']
                 start = segment['start']
                 end = segment['end']
-
                 asl_gloss = translator.to_gloss(text)
 
                 asl_segments.append({
@@ -72,7 +72,6 @@ def transcribe():
             sentences = sent_tokenize(transcript)
             for sentence in sentences:
                 asl_gloss = translator.to_gloss(sentence)
-
                 asl_segments.append({
                     "english": sentence,
                     "asl_gloss": asl_gloss
@@ -95,18 +94,15 @@ def generate_avatar():
     try:
         data = request.get_json()
         text = data.get('asl_gloss')
-        method = data.get('method', 'mediapipe')
-
         if not text:
             return jsonify({"error": "ASL gloss is required"}), 400
 
         asl_gloss = translator.to_gloss(text)
-
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         avatar_result = loop.run_until_complete(
-            avatar_generator.generate_avatar_animation(asl_gloss, method)
+            avatar_generator.generate_avatar_animation(asl_gloss)
         )
 
         animation_id = str(uuid.uuid4())
@@ -145,23 +141,21 @@ def generate_avatar():
 
 @app.route('/get-pose-database', methods=['GET'])
 def get_pose_database():
-    available_signs = list(avatar_generator.asl_poses.keys())
-    handshapes = list(avatar_generator.asl_handshapes.keys())
+    available_signs = get_available_signs()
+    handshapes = list(ASL_HANDSHAPES.keys())
 
     return jsonify({
         "available_signs": available_signs,
         "total_signs": len(available_signs),
         "handshapes": handshapes,
         "capabilities": {
-            "known_signs": "Full pose animation",
+            "known_signs": "ASL-LEX-based animation",
             "unknown_words": "Fingerspelling animation",
             "coordinate_system": "MediaPipe normalized (0-1)",
             "frame_rate": "30 FPS",
             "real_time": True
         },
         "libraries": {
-            "mediapipe": "Hand, pose, and face detection",
-            "opencv": "Computer vision processing", 
             "numpy": "Mathematical computations"
         }
     })

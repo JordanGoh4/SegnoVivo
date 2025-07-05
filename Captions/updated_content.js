@@ -20,7 +20,6 @@ function initialize() {
 function removeAvatar() {
     const avatarBox = document.getElementById("sign-avatar-cc");
     if (avatarBox) avatarBox.remove();
-
     captionsData = []; 
 }
 
@@ -91,13 +90,15 @@ function createAvatar() {
     fetch("http://localhost:5000/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ video_id: videoId }),
+        body: JSON.stringify({ videoId })
     })
     .then(res => res.json())
     .then(data => {
-        captionsData = data.captions;
+        captionsData = data.asl_segments || [];
         requestAnimationFrame(syncCaptions);  
-        generateDatasetAvatarForSegment(captionsData[0], canvas); 
+        if (captionsData.length > 0) {
+            generateDatasetAvatarForSegment(captionsData[0], canvas);
+        }
     });
 
     function syncCaptions() {
@@ -107,8 +108,8 @@ function createAvatar() {
         const currentTime = video.currentTime;
         for (const segment of captionsData) {
             if (currentTime >= segment.start && currentTime <= segment.end) {
-                if (captions.innerText !== segment.text) {
-                    captions.innerText = segment.text;
+                if (captions.innerText !== segment.english) {
+                    captions.innerText = segment.english;
                     generateDatasetAvatarForSegment(segment, canvas);
                 }
                 break;
@@ -120,7 +121,7 @@ function createAvatar() {
 }
 
 function generateDatasetAvatarForSegment(segment, canvas) {
-    const cacheKey = segment.text + "-" + settings.animationQuality;
+    const cacheKey = segment.english;
     if (animationCache.has(cacheKey)) {
         const animation = animationCache.get(cacheKey);
         const renderer = new DatasetAvatarRenderer(canvas, animation);
@@ -131,21 +132,17 @@ function generateDatasetAvatarForSegment(segment, canvas) {
     fetch("http://localhost:5000/generate-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            gloss: segment.gloss,
-            quality: settings.animationQuality
-        }),
+        body: JSON.stringify({ asl_gloss: segment.asl_gloss })
     })
     .then(res => res.json())
     .then(data => {
-        if (data && data.animation) {
-            animationCache.set(cacheKey, data.animation);
-            const renderer = new DatasetAvatarRenderer(canvas, data.animation);
+        if (data && data.data) {
+            animationCache.set(cacheKey, data.data);
+            const renderer = new DatasetAvatarRenderer(canvas, data.data);
             renderer.play();
         }
     });
 }
-
 
 initialize();
 let lastURL = location.href;
