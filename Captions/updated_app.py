@@ -11,7 +11,7 @@ import time
 import asyncio
 from aslgpc12_translator import ASLGPC12Translator
 from avatar_generator import OpenSourceAvatarGenerator
-from pose_database import get_available_signs, ASL_HANDSHAPES
+from pose_database import get_available_signs
 
 # Initialize NLTK tokenizer
 nltk.download('punkt', quiet=True)
