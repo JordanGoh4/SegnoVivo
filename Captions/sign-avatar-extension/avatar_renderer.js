@@ -1,47 +1,55 @@
 class DatasetAvatarRenderer {
-    constructor(canvas, animation) {
+    constructor(canvas, frames) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
-        this.animation = animation.frames;
+        this.frames = frames;
         this.currentFrame = 0;
         this.isPlaying = false;
-        this.fps = animation.fps || 24;
+        this.frameRate = 30; // 30 FPS
     }
 
     play() {
+        if (!Array.isArray(this.frames) || this.frames.length === 0) {
+            console.warn("⚠️ No frames to play in DatasetAvatarRenderer");
+            return;
+        }
         this.isPlaying = true;
-        this.lastFrameTime = performance.now();
-        requestAnimationFrame(this.render.bind(this));
+        this.currentFrame = 0;
+        this.loop();
+    }
+
+    loop() {
+        if (!this.isPlaying || !this.frames || this.frames.length === 0) return;
+
+        const frame = this.frames[this.currentFrame];
+        if (!frame || !Array.isArray(frame) || frame.length === 0) {
+            console.error("❌ Invalid frame format:", frame);
+            return;
+        }
+
+        this.render(frame);
+        this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+
+        setTimeout(() => this.loop(), 1000 / this.frameRate);
     }
 
     stop() {
         this.isPlaying = false;
     }
 
-    render(timestamp) {
-        if (!this.isPlaying) return;
+    render(pose) {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const elapsed = timestamp - this.lastFrameTime;
-        const frameDuration = 1000 / this.fps;
-
-        if (elapsed >= frameDuration) {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            const frame = this.animation[this.currentFrame];
-            this.drawFrame(frame);
-            this.currentFrame = (this.currentFrame + 1) % this.animation.length;
-            this.lastFrameTime = timestamp;
-        }
-
-        requestAnimationFrame(this.render.bind(this));
-    }
-
-    drawFrame(frame) {
-        for (const joint of frame) {
-            const [x, y, radius] = joint;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, radius || 5, 0, 2 * Math.PI);
-            this.ctx.fillStyle = "white";
-            this.ctx.fill();
+        for (const point of pose) {
+            if (!Array.isArray(point) || point.length < 2) continue;
+            const [x, y] = point;
+            ctx.beginPath();
+            ctx.arc(x * this.canvas.width, y * this.canvas.height, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = "#00ffcc";
+            ctx.fill();
         }
     }
 }
+
+window.DatasetAvatarRenderer = DatasetAvatarRenderer;

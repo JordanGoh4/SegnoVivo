@@ -20,7 +20,7 @@ function initialize() {
 function removeAvatar() {
     const avatarBox = document.getElementById("sign-avatar-cc");
     if (avatarBox) avatarBox.remove();
-    captionsData = []; 
+    captionsData = [];
 }
 
 document.addEventListener("signAvatarSettingsChanged", (event) => {
@@ -95,7 +95,7 @@ function createAvatar() {
     .then(res => res.json())
     .then(data => {
         captionsData = data.asl_segments || [];
-        requestAnimationFrame(syncCaptions);  
+        requestAnimationFrame(syncCaptions);
         if (captionsData.length > 0) {
             generateDatasetAvatarForSegment(captionsData[0], canvas);
         }
@@ -108,8 +108,8 @@ function createAvatar() {
         const currentTime = video.currentTime;
         for (const segment of captionsData) {
             if (currentTime >= segment.start && currentTime <= segment.end) {
-                if (captions.innerText !== segment.english) {
-                    captions.innerText = segment.english;
+                if (captions.innerText !== segment.asl_gloss) {
+                    captions.innerText = segment.asl_gloss;
                     generateDatasetAvatarForSegment(segment, canvas);
                 }
                 break;
@@ -121,7 +121,7 @@ function createAvatar() {
 }
 
 function generateDatasetAvatarForSegment(segment, canvas) {
-    const cacheKey = segment.english;
+    const cacheKey = segment.asl_gloss;
     if (animationCache.has(cacheKey)) {
         const animation = animationCache.get(cacheKey);
         const renderer = new DatasetAvatarRenderer(canvas, animation);
@@ -136,17 +136,16 @@ function generateDatasetAvatarForSegment(segment, canvas) {
     })
     .then(res => res.json())
     .then(data => {
-    if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-        animationCache.set(cacheKey, data.data);
-        const renderer = new DatasetAvatarRenderer(canvas, data.data);
-        renderer.play();
-    } else {
-        console.warn("⚠️ Invalid or empty animation data:", data);
-    }
-});
+        if (data && data.data) {
+            animationCache.set(cacheKey, data.data);
+            const renderer = new DatasetAvatarRenderer(canvas, data.data);
+            renderer.play();
+        }
+    });
 }
 
 initialize();
+
 let lastURL = location.href;
 new MutationObserver(() => {
     if (location.href !== lastURL) {
