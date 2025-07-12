@@ -1,157 +1,80 @@
-let settings = {
-    enabled: true,
-    captionsEnabled: true,
-    highContrast: false,
-    animationQuality: "medium",
-    captionSize: "16px"
-};
+// 1. Inject floating caption box and canvas
+function injectFloatingAvatarBox() {
+    // Avoid duplicate injection
+    if (document.getElementById("floating-caption-box")) return;
 
-const animationCache = new Map();
-let captionsData = [];
-
-function initialize() {
-    if (!settings.enabled) return;
-    const existingBox = document.getElementById("sign-avatar-cc");
-    if (existingBox) return;
-
-    createAvatar();
-}
-
-function removeAvatar() {
-    const avatarBox = document.getElementById("sign-avatar-cc");
-    if (avatarBox) avatarBox.remove();
-    captionsData = [];
-}
-
-document.addEventListener("signAvatarSettingsChanged", (event) => {
-    settings = event.detail;
-    const box = document.getElementById("sign-avatar-cc");
-    if (!box) return;
-    box.style.fontSize = settings.captionSize;
-    box.style.backgroundColor = settings.highContrast ? "#000" : "transparent";
-});
-
-function createAvatar() {
+    // Create outer container
     const box = document.createElement("div");
-    box.id = "sign-avatar-cc";
+    box.id = "floating-caption-box";
     box.style.position = "fixed";
-    box.style.bottom = "10px";
-    box.style.right = "10px";
-    box.style.zIndex = "999999";
-    box.style.fontSize = settings.captionSize;
-    box.style.backgroundColor = settings.highContrast ? "#000" : "transparent";
-    box.style.padding = "8px";
-    box.style.borderRadius = "10px";
-    box.style.cursor = "move";
-    box.style.color = "#fff";
+    box.style.bottom = "20px";
+    box.style.right = "20px";
+    box.style.width = "400px";
+    box.style.padding = "10px";
+    box.style.background = "#000000cc";
+    box.style.color = "white";
+    box.style.fontSize = "16px";
+    box.style.zIndex = "9999";
+    box.style.borderRadius = "12px";
+    box.style.backdropFilter = "blur(6px)";
+    box.style.boxShadow = "0 0 10px rgba(0,0,0,0.6)";
+    box.style.display = "flex";
+    box.style.flexDirection = "column";
+    box.style.alignItems = "center";
 
-    const captions = document.createElement("div");
-    captions.className = "ytp-caption-segment";
-    captions.innerText = "...";
-    box.appendChild(captions);
+    // Add text caption element
+    const caption = document.createElement("div");
+    caption.id = "caption-text";
+    caption.textContent = "Loading animation...";
+    caption.style.marginBottom = "10px";
+    caption.style.textAlign = "center";
+    box.appendChild(caption);
 
+    // Add avatar canvas
     const canvas = document.createElement("canvas");
-    canvas.width = 300;
-    canvas.height = 300;
+    canvas.id = "avatarCanvas";
+    canvas.width = 360;
+    canvas.height = 280;
+    canvas.style.borderRadius = "8px";
+    canvas.style.background = "#111";
     box.appendChild(canvas);
+
     document.body.appendChild(box);
-
-    if (typeof DatasetAvatarRenderer !== "function") {
-        console.error("DatasetAvatarRenderer not loaded");
-        return;
-    }
-
-    let offsetX = 0, offsetY = 0, isDragging = false;
-    box.addEventListener("mousedown", e => {
-        isDragging = true;
-        offsetX = e.clientX - box.offsetLeft;
-        offsetY = e.clientY - box.offsetTop;
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
-    });
-
-    function onMouseMove(e) {
-        if (!isDragging) return;
-        box.style.left = e.clientX - offsetX + "px";
-        box.style.top = e.clientY - offsetY + "px";
-        box.style.bottom = "auto";
-        box.style.right = "auto";
-    }
-
-    function onMouseUp() {
-        isDragging = false;
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-    }
-
-    const videoId = new URLSearchParams(window.location.search).get("v");
-    if (!videoId) return;
-
-    fetch("http://localhost:5000/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId })
-    })
-    .then(res => res.json())
-    .then(data => {
-        captionsData = data.asl_segments || [];
-        requestAnimationFrame(syncCaptions);
-        if (captionsData.length > 0) {
-            generateDatasetAvatarForSegment(captionsData[0], canvas);
-        }
-    });
-
-    function syncCaptions() {
-        const video = document.querySelector("video");
-        if (!video || captionsData.length === 0) return;
-
-        const currentTime = video.currentTime;
-        for (const segment of captionsData) {
-            if (currentTime >= segment.start && currentTime <= segment.end) {
-                if (captions.innerText !== segment.asl_gloss) {
-                    captions.innerText = segment.asl_gloss;
-                    generateDatasetAvatarForSegment(segment, canvas);
-                }
-                break;
-            }
-        }
-
-        requestAnimationFrame(syncCaptions);
-    }
 }
 
-function generateDatasetAvatarForSegment(segment, canvas) {
-    const cacheKey = segment.asl_gloss;
-    if (animationCache.has(cacheKey)) {
-        const animation = animationCache.get(cacheKey);
-        const renderer = new DatasetAvatarRenderer(canvas, animation);
-        renderer.play();
-        return;
-    }
+// 2. Call backend and render animation
+function renderAvatarFromGloss(glossText) {
+    const caption = document.getElementById("caption-text");
+    const canvas = document.getElementById("avatarCanvas");
+
+    if (caption) caption.textContent = glossText || "🤟";
 
     fetch("http://localhost:5000/generate-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asl_gloss: segment.asl_gloss })
+        body: JSON.stringify({ gloss: glossText })
     })
     .then(res => res.json())
     .then(data => {
-        if (data && data.data) {
-            animationCache.set(cacheKey, data.data);
-            const renderer = new DatasetAvatarRenderer(canvas, data.data);
-            renderer.play();
+        if (!data.frames || data.frames.length === 0) {
+            caption.textContent = "⚠️ No animation data found";
+            return;
         }
+
+        const renderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
+        renderer.play();
+    })
+    .catch(err => {
+        console.error("❌ Failed to fetch avatar data:", err);
+        if (caption) caption.textContent = "⚠️ Error loading animation";
     });
 }
 
-initialize();
+// 3. Run this once your extension is activated
+function runInterpreter(glossInput = "I LOVE YOU") {
+    injectFloatingAvatarBox();
+    renderAvatarFromGloss(glossInput);
+}
 
-let lastURL = location.href;
-new MutationObserver(() => {
-    if (location.href !== lastURL) {
-        lastURL = location.href;
-        removeAvatar();
-        animationCache.clear();
-        setTimeout(initialize, 1000);
-    }
-}).observe(document, { subtree: true, childList: true });
+// Example trigger for now:
+runInterpreter("MY NAME VINCENT");  // replace with dynamic gloss later
