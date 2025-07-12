@@ -1,40 +1,35 @@
 import os
 import json
-import numpy as np
-
-POSE_DATABASE_PATH = os.path.join("data", "pose_database.json")
 
 class OpenSourceAvatarGenerator:
-    def __init__(self):
-        if os.path.exists(POSE_DATABASE_PATH):
-            with open(POSE_DATABASE_PATH, "r") as f:
-                self.pose_db = json.load(f)
-        else:
-            print("❌ pose_database.json not found.")
-            self.pose_db = {}
+    def __init__(self, fps: int = 24):
+        self.fps = fps
+        self.pose_db = {}
+        self.load_pose_database()
 
-    async def generate_avatar_animation(self, asl_gloss):
+    def load_pose_database(self):
+        # Load from Predictor/sequence_data relative to this file
+        root_dir = os.path.dirname(os.path.dirname(__file__))  # SegnoVivo
+        pose_db_path = os.path.join(root_dir, "Predictor", "sequence_data", "pose_database.json")
+
+        try:
+            with open(pose_db_path, "r") as file:
+                self.pose_db = json.load(file)
+                print(f"✅ Loaded pose database with {len(self.pose_db)} entries.")
+        except FileNotFoundError:
+            print(f"❌ pose_database.json not found at {pose_db_path}")
+
+    def generate(self, gloss: str):
         frames = []
-        gloss_tokens = asl_gloss.lower().split()
+        gloss_tokens = gloss.strip().upper().split()
 
         for token in gloss_tokens:
             if token in self.pose_db:
                 frames.extend(self.pose_db[token])
             else:
-                print(f"⚠️ Token not in pose database: {token}")
+                # Fingerspelling fallback
+                for char in token:
+                    if char in self.pose_db:
+                        frames.extend(self.pose_db[char])
 
-        if frames:
-            return {
-                "success": True,
-                "data": frames,
-                "count": len(frames)
-            }
-        else:
-            return {
-                "success": False,
-                "error": "No frames generated.",
-                "data": []
-            }
-
-    def available_signs(self):
-        return list(self.pose_db.keys())
+        return frames
