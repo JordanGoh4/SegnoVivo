@@ -1,155 +1,241 @@
-.contact-section {
-  font-family: sans-serif;
-  color: #fff;
+body {
+  background: linear-gradient(120deg, #f6f7fb 0%, #e9eafc 100%);
 }
 
-/* Contact Us Block */
+.contact-section {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #222;
+  background: none;
+  min-height: 100vh;
+}
+
 .contact-us {
-  background-color: #f1f1f1;
-  padding: 120px 20px;
+  background: none;
+  padding: 60px 0 0 0;
 }
 
 .contact-inner {
-  background-color: #fff;
-  position: relative;
+  background: #fff;
   border-radius: 25px;
-  box-shadow: 20px 22px 44px #cccc;
-  padding: 60px;
+  box-shadow: 0 8px 32px rgba(44, 62, 80, 0.12);
+  padding: 40px 32px 40px 32px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 40px;
+  gap: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .contact-content {
   display: flex;
-  width: 100%;
-  gap: 30px;
+  flex: 1 1 600px;
+  gap: 32px;
+  flex-wrap: wrap;
 }
 
 .form-section {
-  flex: 1 1 70%;
+  flex: 1 1 350px;
+  min-width: 300px;
 }
 
-.social-section {
-  flex: 1 1 30%;
-  display: flex;
-  align-items: flex-end;
+.contact-form-inner {
+  background: #f8f9fa;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.06);
+  padding: 32px 24px;
 }
 
-.social-item-inner {
-  display: flex;
-  padding: 0;
-  list-style: none;
-  gap: 15px;
-}
-
-.social-item-inner li a {
-  color: #fff;
-  font-size: 20px;
-}
-
-.right_conatct_social_icon {
-  background: linear-gradient(to top right, #1325e8 -5%, #8f10b7 100%);
-}
-
-/* Contact Form Styles */
-.contact-field h3 {
-  color: #000;
-  font-size: 40px;
-  margin-bottom: 10px;
+.contact-field h2 {
+  color: #2d2d2d;
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  font-weight: 700;
 }
 
 .contact-field p {
-  color: #000;
-  font-size: 13px;
-  margin-bottom: 35px;
+  color: #555;
+  font-size: 1rem;
+  margin-bottom: 28px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .contact-field .form-control {
   width: 100%;
-  border: none;
-  border-bottom: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 0;
+  font-size: 1rem;
+  background: #fff;
+  transition: border 0.2s;
 }
 
 .contact-field .form-control:focus {
   outline: none;
-  border-bottom: 2px solid #1325e8;
+  border: 2px solid #6c63ff;
 }
 
 .contact-field .form-control::placeholder {
-  font-size: 13px;
+  color: #aaa;
+  font-size: 0.98rem;
 }
 
 .contact-form-submit {
-  background: linear-gradient(to top right, #1325e8 -5%, #8f10b7 100%);
+  background: linear-gradient(90deg, #6c63ff 0%, #8f10b7 100%);
   border: none;
   color: #fff;
-  padding: 10px;
+  padding: 12px 0;
   width: 100%;
   border-radius: 35px;
   cursor: pointer;
-  font-size: 14px;
-  letter-spacing: 2px;
-  margin-top: 25px;
-}
-
-/* Contact Info Panel */
-.contact-info-sec {
-  position: absolute;
-  right: 0;
-  top: 18%;
-  width: 340px;
-  height: 340px;
-  background-color: #2d2d2d;
-  border-radius: 25px 0 0 25px;
-  padding: 40px;
-  color: #fff;
-}
-
-.contact-info-sec h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
   letter-spacing: 1px;
-  padding-bottom: 15px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.contact-form-submit:hover {
+  background: linear-gradient(90deg, #8f10b7 0%, #6c63ff 100%);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.social-section {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 24px;
+}
+
+.social-item-inner {
+  display: flex;
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+}
+
+.social-item-inner li a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: #fff;
+  background: #6c63ff;
+  transition: background 0.2s, transform 0.2s;
+}
+.social-item-inner li a.facebook { background: #3b5998; }
+.social-item-inner li a.instagram { background: #e4405f; }
+.social-item-inner li a.twitter { background: #1da1f2; }
+.social-item-inner li a:hover {
+  background: #8f10b7;
+  transform: scale(1.1);
+}
+
+.contact-info-sec {
+  background: #2d2d2d;
+  border-radius: 18px;
+  padding: 32px 24px;
+  color: #fff;
+  min-width: 260px;
+  max-width: 340px;
+  margin-left: 16px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.10);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: flex-start;
+  position: static;
+}
+
+.contact-info-sec h3 {
+  letter-spacing: 1px;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
 }
 
 .info-single {
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  gap: 12px;
+  font-size: 1rem;
 }
 
-.info-single i {
-  margin-right: 15px;
+.icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #6c63ff;
+  color: #fff;
+  font-size: 1.2rem;
 }
 
-.info-single span {
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-/* Map Section */
 .map-sec {
-  padding: 50px 20px;
+  padding: 40px 0 60px 0;
 }
 
 .map-inner {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.10);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
   text-align: center;
 }
 
-.map-inner h4 {
-  color: #000;
+.map-inner h3 {
+  color: #2d2d2d;
+  font-size: 1.3rem;
 }
 
 .map-inner p {
-  color: #000;
-  font-size: 13px;
+  color: #555;
+  font-size: 1rem;
   margin-top: 10px;
 }
 
 .map-bind {
-  margin-top: 40px;
-  border-radius: 30px;
+  margin-top: 32px;
+  border-radius: 18px;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.10);
+}
+
+@media (max-width: 900px) {
+  .contact-inner {
+    flex-direction: column;
+    padding: 32px 8px;
+  }
+  .contact-content {
+    flex-direction: column;
+    gap: 24px;
+  }
+  .contact-info-sec {
+    margin-left: 0;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .contact-form-inner, .contact-info-sec, .map-inner {
+    padding: 18px 6px;
+  }
+  .contact-field h2 {
+    font-size: 1.3rem;
+  }
 }

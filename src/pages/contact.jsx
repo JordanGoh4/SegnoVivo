@@ -1,62 +1,49 @@
-import '../css/Contact.css'
+import '../css/Contact.css';
 
-function contact() {
+function Contact() {
   return (
     <div className="contact-section">
       <div className="contact-us">
         <div className="contact-inner">
           <div className="contact-content">
-            <div className="form-section">
+            <section className="form-section" aria-labelledby="contact-heading">
               <div className="contact-form-inner">
                 <div className="contact-field">
-                  <h3>Contact Us</h3>
-                  <p>
-                    Feel Free to contact us any time. We will get back to you as soon as we can!
-                  </p>
-                  <input type="text" className="form-control" placeholder="Name" />
-                  <input type="text" className="form-control" placeholder="Email" />
-                  <textarea className="form-control" placeholder="Message"></textarea>
-                  <button className="contact-form-submit">Send</button>
+                  <h2 id="contact-heading">Contact Us</h2>
+                  <p>Feel free to contact us any time. We will get back to you as soon as we can!</p>
+                  <form className="contact-form" autoComplete="off">
+                    <input type="text" className="form-control" placeholder="Name" aria-label="Name" />
+                    <input type="email" className="form-control" placeholder="Email" aria-label="Email" />
+                    <textarea className="form-control" placeholder="Message" aria-label="Message"></textarea>
+                    <button className="contact-form-submit" type="submit">Send</button>
+                  </form>
                 </div>
+                {/* <div className="social-section">
+                  <ul className="social-item-inner">
+                    <li><a href="#" aria-label="Facebook" className="facebook"><i className="fab fa-facebook-square"></i></a></li>
+                    <li><a href="#" aria-label="Instagram" className="instagram"><i className="fab fa-instagram"></i></a></li>
+                    <li><a href="#" aria-label="Twitter" className="twitter"><i className="fab fa-twitter"></i></a></li>
+                  </ul>
+                </div> */}
               </div>
-            </div>
-            <div className="social-section">
-              <ul className="social-item-inner">
-                <li><a href="#"><i className="fab fa-facebook-square"></i></a></li>
-                <li><a href="#"><i className="fab fa-instagram"></i></a></li>
-                <li><a href="#"><i className="fab fa-twitter"></i></a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="contact-info-sec">
-            <h4>Contact Info</h4>
-            <div className="info-single">
-              <i className="fas fa-headset"></i>
-              <span>+91 8009 054294</span>
-            </div>
-            <div className="info-single">
-              <i className="fas fa-envelope-open-text"></i>
-              <span>info@flightmantra.com</span>
-            </div>
-            <div className="info-single">
-              <i className="fas fa-map-marked-alt"></i>
-              <span>1000+ Travel partners and 65+ Service city across India, USA, Canada & UAE</span>
-            </div>
+            </section>
+            <aside className="contact-info-sec" aria-labelledby="info-heading">
+              <h3 id="info-heading">Contact Info</h3>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-headset"></i></span><span>+91 8009 054294</span></div>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-envelope-open-text"></i></span><span>info@flightmantra.com</span></div>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-map-marked-alt"></i></span><span>1000+ Travel partners and 65+ Service city across India, USA, Canada & UAE</span></div>
+            </aside>
           </div>
         </div>
       </div>
-
-      <div className="map-sec">
+      <section className="map-sec" aria-labelledby="map-heading">
         <div className="map-inner">
-          <h4>Find Us on Google Map</h4>
-          <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit...</p>
+          <h3 id="map-heading">Find Us on Google Map</h3>
           <div className="map-bind">
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18..."
               width="100%"
               height="450"
-              frameBorder="0"
               style={{ border: 0 }}
               allowFullScreen=""
               aria-hidden="false"
@@ -65,10 +52,9 @@ function contact() {
             ></iframe>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-
-export default contact
+export default Contact;
