@@ -2,28 +2,27 @@ import '../css/About.css';
 import { useState } from 'react';
 import kt from '../images/kt.png';
 import jg from '../images/jg.png';
+import caption from '../images/caption.png';
+import settings from '../images/Settings.png';
+import widget from '../images/Widgets.png';
+import secure from '../images/Secure.png';
 
 const features = [
   {
-    icon: 'fas fa-language',
+    img: caption,
     text: 'Real-time sign language translation',
   },
   {
-    icon: 'fas fa-user-friends',
+    img: settings,
     text: 'User-friendly and accessible interface',
   },
   {
-    icon: 'fas fa-lock',
+    img: secure,
     text: 'Secure authentication and privacy',
   },
   {
-    icon: 'fas fa-universal-access',
+    img: widget,
     text: 'Designed to empower deaf individuals',
-  },
-  // Example with image placeholder instead of icon:
-  {
-    img: 'https://via.placeholder.com/48x48.png?text=Img',
-    text: 'Custom feature with image',
   },
 ];
 
