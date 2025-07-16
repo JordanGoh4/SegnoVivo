@@ -14,7 +14,6 @@ cap = cv2.VideoCapture(0)
 recording = False
 current_sequence = []
 
-# Create or load the existing label map
 label_map_file = 'label_map.npy'
 if os.path.exists(label_map_file):
     try:
@@ -41,14 +40,14 @@ while True:
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             landmarks = []
-            for lm in hand_landmarks.landmark: #Loops through each of the 21 key points on the hand
+            for lm in hand_landmarks.landmark:
                 landmarks += [lm.x, lm.y, lm.z]
             if recording:
                 current_sequence.append(landmarks)
     
     if recording:
         cv2.putText(frame, "Recording...", (10,30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2) #Displays text 10 px from left and 30 px from top, 1 = font-size, 2 refers to thickness
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2) 
     
     cv2.imshow("Sequence Collector", frame)
     key = cv2.waitKey(1) & 0xFF
@@ -74,14 +73,14 @@ while True:
 
         print(f"Saved sequence as {sequence_file}")
         
-        # Check if this label exists in our label map
+    
         label_exists = False
         for idx, name in label_map.items():
             if name == label:
                 label_exists = True
                 break
                 
-        # Add the label to our map if it doesn't exist
+
         if not label_exists:
             new_idx = len(label_map)
             label_map[new_idx] = label
@@ -92,7 +91,7 @@ while True:
 
         current_sequence = []
 
-        # Reopen the webcam after labeling
+    
         cap = cv2.VideoCapture(0)
         print("Press 'r' to start recording, 'e' to stop and save, 'q' to quit")
 
@@ -102,7 +101,6 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 
-# Final save of the label map
 if label_map:
     np.save(label_map_file, label_map)
     print(f"Final label map saved: {label_map}")
