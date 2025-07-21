@@ -8,8 +8,7 @@ class OpenSourceAvatarGenerator:
         self.load_pose_database()
 
     def load_pose_database(self):
-        # Load from Predictor/sequence_data relative to this file
-        root_dir = os.path.dirname(os.path.dirname(__file__))  # SegnoVivo
+        root_dir = os.path.dirname(os.path.dirname(__file__))
         pose_db_path = os.path.join(root_dir, "Predictor", "sequence_data", "pose_database.json")
 
         try:
@@ -27,7 +26,6 @@ class OpenSourceAvatarGenerator:
             if token in self.pose_db:
                 frames.extend(self.pose_db[token])
             else:
-                # Fingerspelling fallback
                 for char in token:
                     if char in self.pose_db:
                         frames.extend(self.pose_db[char])
