@@ -3,6 +3,12 @@ import { registerUser } from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import "../css/SignUp.css";
 
+function validatePassword(password) {
+  // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+  return regex.test(password);
+}
+
 function SignUp() {
   const [formData, setFormData] = useState({
     username: "",
@@ -25,9 +31,22 @@ function SignUp() {
         setError("Please fill all fields");
         return;
       }
+      if (!validatePassword(formData.password)) {
+        setError(
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+        );
+        return;
+      }
       const response = await registerUser(formData);
 
       if (response.error || (response.data && response.data.error)) {
+        // Check for duplicate username/email error
+        if (
+          (response.error && response.error.toLowerCase().includes("exists")) ||
+          (response.data && response.data.error && response.data.error.toLowerCase().includes("exists"))
+        ) {
+          window.alert("A user with this username or email already exists.");
+        }
         setError(response.error || response.data.error);
       } else {
         setSuccess(true);
@@ -36,7 +55,9 @@ function SignUp() {
         }, 2000);
       }
     } catch (err) {
-      console.error("Registration error:", err);
+      if (err.message && err.message.toLowerCase().includes("exists")) {
+        window.alert("A user with this username or email already exists.");
+      }
       setError(err.message || "Registration failed. Please try again.");
     }
   };
@@ -90,6 +111,7 @@ function SignUp() {
                 onChange={handleChange}
                 required
               />
+              <small>Password must be at least 8 characters and include uppercase, lowercase, number, and special character.</small>
             </div>
 
             <button type="submit" className="submit-btn">
