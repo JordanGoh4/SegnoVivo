@@ -2,10 +2,8 @@ import os
 import csv
 import json
 
-
 def flat63_to_xy21(flat):
     return [[flat[i], flat[i + 1]] for i in range(0, 63, 3)]
-
 
 data_dir = "C:\\Users\\Kai Wen\\Documents\\GitHub\\SegnoVivo\\Predictor\\sequence_data"
 input_files = [f for f in os.listdir(data_dir) if f.endswith(".csv")]
@@ -19,14 +17,12 @@ for fname in input_files:
     with open(os.path.join(data_dir, fname)) as f:
         reader = csv.reader(f)
         for row in reader:
-            floats = [float(x) for x in row if x.strip()]
-            if len(floats) < 63:
+            if len(row) < 64:
                 continue
-            frames.append({"right_hand": flat63_to_xy21(floats[:63])})
-
+            floats = [float(x) for x in row[:63]]
+            frames.append({"right_hand": flat63_to_xy21(floats)})
     if frames:
         pose_db.setdefault(label, []).extend(frames)
-
 
 with open(output_json_path, "w") as f:
     json.dump(pose_db, f, indent=2)
