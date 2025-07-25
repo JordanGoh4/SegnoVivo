@@ -1,9 +1,6 @@
-// 1. Inject floating caption box and canvas
 function injectFloatingAvatarBox() {
-    // Avoid duplicate injection
     if (document.getElementById("floating-caption-box")) return;
 
-    // Create outer container
     const box = document.createElement("div");
     box.id = "floating-caption-box";
     box.style.position = "fixed";
@@ -22,15 +19,21 @@ function injectFloatingAvatarBox() {
     box.style.flexDirection = "column";
     box.style.alignItems = "center";
 
-    // Add text caption element
+    const glossDisplay = document.createElement("div");
+    glossDisplay.id = "gloss-display";
+    glossDisplay.style.marginBottom = "10px";
+    glossDisplay.style.textAlign = "center";
+    glossDisplay.style.fontWeight = "bold";
+    glossDisplay.style.fontSize = "18px";
+    box.appendChild(glossDisplay);
+
     const caption = document.createElement("div");
     caption.id = "caption-text";
-    caption.textContent = "Loading animation...";
+    caption.textContent = "Awaiting animation...";
     caption.style.marginBottom = "10px";
     caption.style.textAlign = "center";
     box.appendChild(caption);
 
-    // Add avatar canvas
     const canvas = document.createElement("canvas");
     canvas.id = "avatarCanvas";
     canvas.width = 360;
@@ -42,12 +45,14 @@ function injectFloatingAvatarBox() {
     document.body.appendChild(box);
 }
 
-// 2. Call backend and render animation
 function renderAvatarFromGloss(glossText) {
+    const glossDisplay = document.getElementById("gloss-display");
     const caption = document.getElementById("caption-text");
     const canvas = document.getElementById("avatarCanvas");
 
-    if (caption) caption.textContent = glossText || "🤟";
+    if (glossDisplay) glossDisplay.textContent = glossText || "";
+
+    if (caption) caption.textContent = glossText ? "Loading animation..." : "🤟";
 
     fetch("http://localhost:5000/generate-avatar", {
         method: "POST",
@@ -61,6 +66,8 @@ function renderAvatarFromGloss(glossText) {
             return;
         }
 
+        caption.textContent = "";
+
         const renderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
         renderer.play();
     })
@@ -70,11 +77,57 @@ function renderAvatarFromGloss(glossText) {
     });
 }
 
-// 3. Run this once your extension is activated
-function runInterpreter(glossInput = "I LOVE YOU") {
-    injectFloatingAvatarBox();
-    renderAvatarFromGloss(glossInput);
+
+function getYouTubeCaptionContainer() {
+    return (
+        document.querySelector(".ytp-caption-segment") ||
+        document.querySelector(".caption-window") ||
+        document.querySelector(".ytp-caption-window-container") ||
+        document.querySelector('yt-formatted-string.captions-text')
+    );
 }
 
-// Example trigger for now:
-runInterpreter("MY NAME VINCENT");  // replace with dynamic gloss later
+function observeYouTubeCaptions() {
+    injectFloatingAvatarBox();
+    let lastCaption = "";
+
+    function handleNewCaption(captionText) {
+        if (!captionText || captionText.trim() === "" || captionText.trim() === lastCaption) return;
+        lastCaption = captionText.trim();
+        renderAvatarFromGloss(lastCaption);
+    }
+
+    const primaryContainer = getYouTubeCaptionContainer();
+
+    if (primaryContainer) {
+        const observer = new MutationObserver(() => {
+            let newText;
+            if (primaryContainer.classList.contains("ytp-caption-window-container")) {
+                newText = primaryContainer.innerText;
+            } else if (primaryContainer.querySelectorAll(".ytp-caption-segment").length > 0) {
+                newText = Array.from(primaryContainer.querySelectorAll(".ytp-caption-segment"))
+                    .map(el => el.textContent).join(" ");
+            } else {
+                newText = primaryContainer.textContent || primaryContainer.innerText || "";
+            }
+            handleNewCaption(newText);
+        });
+
+        observer.observe(primaryContainer, { childList: true, subtree: true, characterData: true });
+    } else {
+        setInterval(() => {
+            const cont = getYouTubeCaptionContainer();
+            if (cont) {
+                let newText = cont.textContent || cont.innerText || "";
+                handleNewCaption(newText);
+            }
+        }, 700);
+    }
+}
+
+observeYouTubeCaptions();
+
+window.runASLAvatarForGloss = function(gloss) {
+    injectFloatingAvatarBox();
+    renderAvatarFromGloss(gloss);
+};
