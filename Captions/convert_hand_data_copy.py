@@ -7,7 +7,7 @@ def flat63_to_xy21(flat):
     return [[flat[i], flat[i + 1]] for i in range(0, 63, 3)]
 
 
-data_dir = "Predictor/sequence_data"
+data_dir = "C:\Users\Kai Wen\Documents\GitHub\SegnoVivo\Predictor\sequence_data"
 input_files = [f for f in os.listdir(data_dir) if f.endswith(".csv")]
 output_json_path = os.path.join(data_dir, "pose_database_normalized.json")
 
