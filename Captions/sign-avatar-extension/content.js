@@ -1,4 +1,6 @@
-let avatarRenderer = null;
+let observer = null;
+let lastCaption = "";
+let isActive = false;
 
 function injectFloatingAvatarBox() {
     if (document.getElementById("floating-caption-box")) return;
@@ -47,51 +49,110 @@ function injectFloatingAvatarBox() {
     document.body.appendChild(box);
 }
 
-function startAvatar() {
-    if (avatarRenderer) return; 
-    injectFloatingAvatarBox();
-
-    let testGloss = "HELLO";
+function renderAvatarFromGloss(glossText) {
     const glossDisplay = document.getElementById("gloss-display");
-    glossDisplay.textContent = testGloss;
+    const caption = document.getElementById("caption-text");
+    const canvas = document.getElementById("avatarCanvas");
 
-    fetch("https://your-render-or-local-domain/generate-avatar", {
+    if (glossDisplay) glossDisplay.textContent = glossText || "";
+    if (caption) caption.textContent = glossText ? "Loading animation..." : "🤟";
+
+    fetch("https://captions-k2t3.onrender.com/generate-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gloss: testGloss })
+        body: JSON.stringify({ gloss: glossText })
     })
     .then(res => res.json())
     .then(data => {
-        const caption = document.getElementById("caption-text");
         if (!data.frames || data.frames.length === 0) {
             caption.textContent = "⚠️ No animation data found";
             return;
         }
         caption.textContent = "";
-        const canvas = document.getElementById("avatarCanvas");
-        avatarRenderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
-        avatarRenderer.play();
+        const renderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
+        renderer.play();
+        window.currentAvatarRenderer = renderer;
     })
     .catch(err => {
-        console.error(err);
-        const caption = document.getElementById("caption-text");
+        console.error("❌ Failed to fetch avatar data:", err);
         if (caption) caption.textContent = "⚠️ Error loading animation";
     });
 }
 
-function stopAvatar() {
-    if (avatarRenderer) {
-        avatarRenderer.stop();
-        avatarRenderer = null;
+function getYouTubeCaptionContainer() {
+    return (
+        document.querySelector(".ytp-caption-segment") ||
+        document.querySelector(".caption-window") ||
+        document.querySelector(".ytp-caption-window-container") ||
+        document.querySelector('yt-formatted-string.captions-text')
+    );
+}
+
+function handleNewCaption(captionText) {
+    if (!captionText || captionText.trim() === "" || captionText.trim() === lastCaption) return;
+    lastCaption = captionText.trim();
+    renderAvatarFromGloss(lastCaption);
+}
+
+function startInterpreter() {
+    if (isActive) return;
+    isActive = true;
+    injectFloatingAvatarBox();
+    lastCaption = "";
+
+    const primaryContainer = getYouTubeCaptionContainer();
+    if (primaryContainer) {
+        // Immediately process the current caption when starting
+        let currentText = primaryContainer.textContent || primaryContainer.innerText || "";
+        handleNewCaption(currentText);
+
+        observer = new MutationObserver(() => {
+            let newText;
+            if (primaryContainer.classList.contains("ytp-caption-window-container")) {
+                newText = primaryContainer.innerText;
+            } else if (primaryContainer.querySelectorAll(".ytp-caption-segment").length > 0) {
+                newText = Array.from(primaryContainer.querySelectorAll(".ytp-caption-segment"))
+                    .map(el => el.textContent).join(" ");
+            } else {
+                newText = primaryContainer.textContent || primaryContainer.innerText || "";
+            }
+            handleNewCaption(newText);
+        });
+        observer.observe(primaryContainer, { childList: true, subtree: true, characterData: true });
+        window.captionObserver = observer;
+    } else {
+        // fallback for videos with unusual caption containers
+        window.captionInterval = setInterval(() => {
+            const cont = getYouTubeCaptionContainer();
+            if (cont) {
+                let newText = cont.textContent || cont.innerText || "";
+                handleNewCaption(newText);
+            }
+        }, 700);
+    }
+}
+
+function stopInterpreter() {
+    if (!isActive) return;
+    isActive = false;
+    if (observer) {
+        observer.disconnect();
+        observer = null;
+    }
+    if (window.captionInterval) {
+        clearInterval(window.captionInterval);
+        window.captionInterval = null;
+    }
+    if (window.currentAvatarRenderer) {
+        window.currentAvatarRenderer.stop();
+        window.currentAvatarRenderer = null;
     }
     const box = document.getElementById('floating-caption-box');
     if (box) box.remove();
+    lastCaption = "";
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === "START_AVATAR") {
-        startAvatar();
-    } else if (message.type === "STOP_AVATAR") {
-        stopAvatar();
-    }
+    if (message.type === "START_AVATAR") startInterpreter();
+    if (message.type === "STOP_AVATAR") stopInterpreter();
 });
