@@ -1,3 +1,5 @@
+let avatarRenderer = null;
+
 function injectFloatingAvatarBox() {
     if (document.getElementById("floating-caption-box")) return;
 
@@ -45,89 +47,51 @@ function injectFloatingAvatarBox() {
     document.body.appendChild(box);
 }
 
-function renderAvatarFromGloss(glossText) {
+function startAvatar() {
+    if (avatarRenderer) return; 
+    injectFloatingAvatarBox();
+
+    let testGloss = "HELLO";
     const glossDisplay = document.getElementById("gloss-display");
-    const caption = document.getElementById("caption-text");
-    const canvas = document.getElementById("avatarCanvas");
+    glossDisplay.textContent = testGloss;
 
-    if (glossDisplay) glossDisplay.textContent = glossText || "";
-
-    if (caption) caption.textContent = glossText ? "Loading animation..." : "🤟";
-
-    fetch("http://localhost:5000/generate-avatar", {
+    fetch("https://your-render-or-local-domain/generate-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gloss: glossText })
+        body: JSON.stringify({ gloss: testGloss })
     })
     .then(res => res.json())
     .then(data => {
+        const caption = document.getElementById("caption-text");
         if (!data.frames || data.frames.length === 0) {
             caption.textContent = "⚠️ No animation data found";
             return;
         }
-
         caption.textContent = "";
-
-        const renderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
-        renderer.play();
+        const canvas = document.getElementById("avatarCanvas");
+        avatarRenderer = new DatasetAvatarRenderer(canvas, data.frames, data.fps);
+        avatarRenderer.play();
     })
     .catch(err => {
-        console.error("❌ Failed to fetch avatar data:", err);
+        console.error(err);
+        const caption = document.getElementById("caption-text");
         if (caption) caption.textContent = "⚠️ Error loading animation";
     });
 }
 
-
-function getYouTubeCaptionContainer() {
-    return (
-        document.querySelector(".ytp-caption-segment") ||
-        document.querySelector(".caption-window") ||
-        document.querySelector(".ytp-caption-window-container") ||
-        document.querySelector('yt-formatted-string.captions-text')
-    );
+function stopAvatar() {
+    if (avatarRenderer) {
+        avatarRenderer.stop();
+        avatarRenderer = null;
+    }
+    const box = document.getElementById('floating-caption-box');
+    if (box) box.remove();
 }
 
-function observeYouTubeCaptions() {
-    injectFloatingAvatarBox();
-    let lastCaption = "";
-
-    function handleNewCaption(captionText) {
-        if (!captionText || captionText.trim() === "" || captionText.trim() === lastCaption) return;
-        lastCaption = captionText.trim();
-        renderAvatarFromGloss(lastCaption);
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "START_AVATAR") {
+        startAvatar();
+    } else if (message.type === "STOP_AVATAR") {
+        stopAvatar();
     }
-
-    const primaryContainer = getYouTubeCaptionContainer();
-
-    if (primaryContainer) {
-        const observer = new MutationObserver(() => {
-            let newText;
-            if (primaryContainer.classList.contains("ytp-caption-window-container")) {
-                newText = primaryContainer.innerText;
-            } else if (primaryContainer.querySelectorAll(".ytp-caption-segment").length > 0) {
-                newText = Array.from(primaryContainer.querySelectorAll(".ytp-caption-segment"))
-                    .map(el => el.textContent).join(" ");
-            } else {
-                newText = primaryContainer.textContent || primaryContainer.innerText || "";
-            }
-            handleNewCaption(newText);
-        });
-
-        observer.observe(primaryContainer, { childList: true, subtree: true, characterData: true });
-    } else {
-        setInterval(() => {
-            const cont = getYouTubeCaptionContainer();
-            if (cont) {
-                let newText = cont.textContent || cont.innerText || "";
-                handleNewCaption(newText);
-            }
-        }, 700);
-    }
-}
-
-observeYouTubeCaptions();
-
-window.runASLAvatarForGloss = function(gloss) {
-    injectFloatingAvatarBox();
-    renderAvatarFromGloss(gloss);
-};
+});

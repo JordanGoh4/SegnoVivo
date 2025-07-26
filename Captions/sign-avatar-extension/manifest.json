@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Deaf Translator Avatar",
+  "name": "Sign Avatar CC",
   "version": "1.0",
-  "description": "Translates YouTube videos to ASL gloss with signing avatar",
-  "permissions": ["scripting", "storage"],
-  "host_permissions": ["https://www.youtube.com/*", "http://localhost:5000/*"],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "description": "AI-Powered Sign Language Captions with Start/Stop",
+  "permissions": ["scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://captions-k2t3.onrender.com/*"
+  ],
   "action": {
     "default_popup": "popup.html"
   },
