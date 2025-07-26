@@ -36,7 +36,7 @@ function NavBar() {
             <Link to="/translate">
               <img src={CaptionIcon} alt="Translate" className="nav-icon" />
             </Link>
-            {/* <Link to="/download">Download</Link> */}
+            <Link to="/download">Download</Link>
             <span className="user-info">Welcome, {user.user?.username || 'User'}!</span>
             <button onClick={handleLogout} className="logout-btn">Logout</button>
           </>

@@ -12,7 +12,6 @@ body, html {
   background-color: #4A4CBD;
 }
 
-/* Navbar styles */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -52,7 +51,6 @@ body, html {
   color: #3498db;
 }
 
-/* Hero section styles */
 .hero-section {
   flex: 1;
   display: flex;
@@ -79,7 +77,6 @@ body, html {
   margin-bottom: 2rem;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .navbar {
     padding: 1rem 1.5rem;

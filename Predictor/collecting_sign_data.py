@@ -18,13 +18,10 @@ label_map_file = 'label_map.npy'
 if os.path.exists(label_map_file):
     try:
         label_map = np.load(label_map_file, allow_pickle=True).item()
-        print(f"Loaded existing label map with {len(label_map)} labels")
     except:
         label_map = {}
-        print("Created new label map")
 else:
     label_map = {}
-    print("Created new label map")
 
 print("Press 'r' to start recording, 'e' to stop and save, 'q' to quit")
 
@@ -85,7 +82,6 @@ while True:
             new_idx = len(label_map)
             label_map[new_idx] = label
             print(f"Added new label '{label}' with index {new_idx} to label map")
-            # Save the updated label map
             np.save(label_map_file, label_map)
             print(f"Saved updated label map: {label_map}")
 

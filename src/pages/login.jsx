@@ -33,13 +33,11 @@ function Login() {
         throw new Error(data.error || 'Login failed');
       }
       
-      // Save user and token (if using JWT)
       login({ 
         user: data.user,
         token: data.token 
       });
       
-      // Redirect to protected page
       navigate('/');
       
     } catch (err) {

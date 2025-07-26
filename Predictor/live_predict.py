@@ -5,7 +5,6 @@ import tensorflow as tf
 import time
 import socketio
 
-# WebSocket client
 sio = socketio.Client()
 
 try:
@@ -21,7 +20,6 @@ def send_prediction(gesture, confidence):
         "confidence": confidence
     })
 
-# Load model and config
 model = tf.keras.models.load_model('gesture_model.h5')
 label_map = np.load('label_map.npy', allow_pickle=True).item()
 max_sequence_length = model.input_shape[1]

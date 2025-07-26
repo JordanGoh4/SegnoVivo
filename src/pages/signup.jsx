@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import "../css/SignUp.css";
 
 function validatePassword(password) {
-  // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
   return regex.test(password);
 }
@@ -40,7 +39,6 @@ function SignUp() {
       const response = await registerUser(formData);
 
       if (response.error || (response.data && response.data.error)) {
-        // Check for duplicate username/email error
         if (
           (response.error && response.error.toLowerCase().includes("exists")) ||
           (response.data && response.data.error && response.data.error.toLowerCase().includes("exists"))

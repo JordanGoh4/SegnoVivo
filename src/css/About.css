@@ -150,7 +150,6 @@ body {
   background: #f6f7fb;
 }
 
-/* Remove .founder-img-placeholder styles if not needed */
 .founder-img-placeholder {
   display: none;
 }

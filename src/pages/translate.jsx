@@ -20,10 +20,8 @@ function Translate() {
           <p>Allow camera access to start translation</p>
           <button className="camera-btn">Start Camera</button>
 
-          {/* Real-time prediction display */}
           <LivePredictionDisplay />
 
-          {/* Webcam placeholder box */}
           <div className="camera-box">
             <p><strong>(Webcam view is handled on backend)</strong></p>
             <div className="fake-camera-box">

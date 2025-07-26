@@ -4,12 +4,10 @@ from flask_socketio import SocketIO, emit
 import numpy as np
 import tensorflow as tf
 
-# Initialize app
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Load model and label map
 model = tf.keras.models.load_model('gesture_model.h5')
 label_map = np.load('label_map.npy', allow_pickle=True).item()
 max_sequence_length = model.input_shape[1]

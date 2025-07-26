@@ -3,13 +3,12 @@ import spacy
 class ASLGPC12Translator:
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
-        # Optional: override common mappings
         self.word_map = {
             "thank": "THANK-YOU",
             "name": "NAME",
             "hello": "HELLO",
             "watching": "WATCH",
-            "is": "",       # dropped in gloss
+            "is": "",
             "a": "",
             "an": "",
             "the": "",
@@ -26,7 +25,6 @@ class ASLGPC12Translator:
         for token in doc:
             word = token.lemma_.lower()
 
-            # Skip auxiliary verbs, articles, prepositions
             if token.pos_ in {"AUX", "DET", "ADP", "CCONJ", "PUNCT"}:
                 continue
 

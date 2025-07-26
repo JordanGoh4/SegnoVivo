@@ -11,7 +11,6 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// MySQL connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -22,7 +21,6 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Create users table if not exists
 async function initializeDatabase() {
   const connection = await pool.getConnection();
   await connection.query(`
@@ -39,7 +37,6 @@ async function initializeDatabase() {
 
 initializeDatabase();
 
-// Registration endpoint
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -62,12 +59,10 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Login endpoint
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    // 1. Check if user exists
     const [users] = await pool.query(
       'SELECT * FROM users WHERE username = ?', 
       [username]
@@ -79,17 +74,15 @@ app.post('/api/login', async (req, res) => {
     
     const user = users[0];
     
-    // 2. Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // 3. Exclude password from response
     const { password: _, ...userWithoutPassword } = user;
     
-    // 4. Generate JWT token (optional but recommended)
+
     const token = jwt.sign(
       { id: user.id }, 
       process.env.JWT_SECRET, 
