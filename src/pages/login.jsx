@@ -83,7 +83,7 @@ function Login() {
           </div>
 
           <div className="divider centered-divider">
-            <span>OR</span>
+            <span></span>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>

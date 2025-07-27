@@ -1,4 +1,4 @@
-import extensionPreview from '../images/Caption.png';
+import extensionPreview from '../images/Depression.png';
 
 function Download() {
   return (

@@ -29,9 +29,9 @@ function Contact() {
             </section>
             <aside className="contact-info-sec" aria-labelledby="info-heading">
               <h3 id="info-heading">Contact Info</h3>
-              <div className="info-single"><span className="icon-circle"><i className="fas fa-headset"></i></span><span>+91 8009 054294</span></div>
-              <div className="info-single"><span className="icon-circle"><i className="fas fa-envelope-open-text"></i></span><span>info@flightmantra.com</span></div>
-              <div className="info-single"><span className="icon-circle"><i className="fas fa-map-marked-alt"></i></span><span>1000+ Travel partners and 65+ Service city across India, USA, Canada & UAE</span></div>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-headset"></i></span><span>+65 8009 0542</span></div>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-envelope-open-text"></i></span><span>SegnoVivo@email.com</span></div>
+              <div className="info-single"><span className="icon-circle"><i className="fas fa-map-marked-alt"></i></span><span>Helping one person at a time.</span></div>
             </aside>
           </div>
         </div>
