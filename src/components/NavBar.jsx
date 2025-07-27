@@ -9,11 +9,16 @@ import UserIcon from '../images/User.png';
 import CaptionIcon from '../images/Caption.png';
 
 function NavBar() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
 
   const handleLogout = () => {
     logout();
   };
+
+  if (loading) {
+    // Optionally, show a spinner or nothing while loading
+    return null;
+  }
 
   return (
     <nav className="navbar">
@@ -37,7 +42,9 @@ function NavBar() {
               <img src={CaptionIcon} alt="Translate" className="nav-icon" />
             </Link>
             <Link to="/download">Download</Link>
-            <span className="user-info">Welcome, {user.user?.username || 'User'}!</span>
+            <span className="user-info">
+              Welcome, {user.user?.username || user.user?.google_name || user.user?.email || 'User'}!
+            </span>
             <button onClick={handleLogout} className="logout-btn">Logout</button>
           </>
         ) : (

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { registerUser } from "../services/authService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../services/AuthContext";
+import Google from "../images/Google.png";
 import "../css/SignUp.css";
 
 function validatePassword(password) {
@@ -17,6 +19,28 @@ function SignUp() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get('token');
+    const userData = urlParams.get('user');
+    
+    if (token && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData));
+        login({ 
+          user: user,
+          token: token 
+        });
+        navigate('/');
+      } catch (err) {
+        setError('Google signup failed. Please try again.');
+        console.error('Google signup error:', err);
+      }
+    }
+  }, [location, login, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -71,6 +95,7 @@ function SignUp() {
               Registration successful! Redirecting...
             </div>
           )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="username">Username</label>

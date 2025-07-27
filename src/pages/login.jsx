@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import Google from "../images/Google.png";
 import Envelope from "../images/Envelope.png";
 import X from "../images/X.png";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../services/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function Login() {
   const [credentials, setCredentials] = useState({
@@ -15,6 +15,27 @@ function Login() {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get('token');
+    const userData = urlParams.get('user');
+    
+    if (token && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData));
+        login({ 
+          user: user,
+          token: token 
+        });
+        navigate('/');
+      } catch (err) {
+        setError('Google login failed. Please try again.');
+        console.error('Google login error:', err);
+      }
+    }
+  }, [location, login, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,13 +76,13 @@ function Login() {
 
           <div className="social-login">Login using social account</div>
 
-          <div className="social-icon">
-            <img src={Google}></img>
-            <img src={Envelope}></img>
-            <img src={X}></img>
+          <div className="social-icon" style={{ marginBottom: '1.5rem' }}>
+            <a href="http://localhost:3001/auth/google">
+              <img src={Google} alt="Google Login"></img>
+            </a>
           </div>
 
-          <div className="divider">
+          <div className="divider centered-divider">
             <span>OR</span>
           </div>
 

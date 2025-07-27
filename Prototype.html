@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hand Gesture Prediction</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fafafa; margin: 20px; }
+    #container { position: relative; width: 480px; height: 360px; }
+    video, canvas { 
+      position: absolute; 
+      top: 0; left: 0;
+      width: 480px; height: 360px;
+      border-radius: 8px;
+    }
+    #status { margin-top: 380px; color: #555; }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+<body>
+  <h2>Hand Gesture Prediction Demo</h2>
+  <div id="container">
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="output" width="480" height="360"></canvas>
+  </div>
+  <p id="status">Initializing...</p>
+  <script>
+  
+    const BACKEND_URL = "https://test-2qyi.onrender.com/predict";
+
+    
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('output');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const sequence = [];
+    const sequenceLength = 30; 
+
+    let isPredicting = false;
+    let lastPrediction = null;
+    let lastPredictionTime = 0;
+    const PREDICTION_HOLD_MS = 2000; 
+
+    async function init() {
+      const hands = new Hands({
+        locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7
+      });
+
+      hands.onResults(onResults);
+
+      const camera = new Camera(video, {
+        onFrame: async () => {
+          await hands.send({image: video});
+        },
+        width: 480,
+        height: 360,
+      });
+      camera.start();
+    }
+
+    function onResults(results) {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+      let now = Date.now();
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const lm = results.multiHandLandmarks[0];
+        const flat = [];
+        lm.forEach(point => flat.push(point.x, point.y, point.z));
+
+        sequence.push(flat);
+        if (sequence.length > sequenceLength) sequence.shift();
+
+    
+        ctx.fillStyle = "#FF3030";
+        lm.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(point.x * canvas.width, point.y * canvas.height, 5, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+
+       
+        if (sequence.length === sequenceLength && !isPredicting) {
+          isPredicting = true;
+          fetch(BACKEND_URL, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sequence: sequence})
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.gesture !== undefined && data.confidence !== undefined) {
+              lastPrediction = data;
+              lastPredictionTime = Date.now();
+            } else if (data.error) {
+              lastPrediction = {gesture: "Error", confidence: 0};
+              lastPredictionTime = Date.now();
+            }
+          })
+          .catch(err => {
+            lastPrediction = {gesture: "Prediction failed", confidence: 0};
+            lastPredictionTime = Date.now();
+          })
+          .finally(() => {
+            isPredicting = false;
+          });
+        }
+
+      
+        if (lastPrediction && (now - lastPredictionTime) < PREDICTION_HOLD_MS) {
+          status.textContent = `Gesture: ${lastPrediction.gesture} (${(lastPrediction.confidence * 100).toFixed(1)}%)`;
+        } else {
+          status.textContent = "Detected hand";
+        }
+
+      } else {
+        status.textContent = "No hands detected.";
+        sequence.length = 0;
+        
+        if (lastPrediction && (now - lastPredictionTime) > PREDICTION_HOLD_MS) {
+          lastPrediction = null;
+        }
+      }
+
+      ctx.restore();
+    }
+
+    init();
+  </script>
+</body>
+</html>

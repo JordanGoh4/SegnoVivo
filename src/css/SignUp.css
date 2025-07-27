@@ -68,6 +68,58 @@
   font-weight: 600;
 }
 
+.social-signup {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.social-signup p {
+  color: #718096;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.social-icon {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.social-icon img {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.social-icon img:hover {
+  transform: scale(1.1);
+}
+
+.divider {
+  text-align: center;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.divider span {
+  background: white;
+  padding: 0 1rem;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 480px) {
   .form-wrapper {
     padding: 1.5rem;
