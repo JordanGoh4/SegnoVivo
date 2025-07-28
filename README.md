@@ -18,4 +18,4 @@ Upon downloading, users can then open Chrome and visit the Extensions page, whic
 
 In an ideal world, this file would have been uploaded onto the Chrome store, whereby users can simply download the extension without having to download the files. However due to financial constraints in having to pay to register and create a Developer account, we were unable to make it happen as of this submission. 
 
-Meanwhile, for the Predictor, nothing needs to be done from the user side as the backend is hosted on Render. However, as mentioned earlier, users can expect a bootup time on Render’s side by up to 30 seconds due to the use of their free plan since Render stops the servers whenever there is inactivity greater than 15 seconds. 
+Meanwhile, for the Predictor, nothing needs to be done from the user side as the backend is hosted on Render. However, as mentioned earlier, users can expect a bootup time on Render’s side by up to 1 minute due to the use of their free plan since Render stops the servers whenever there is inactivity greater than 15 seconds. 
