@@ -13,12 +13,8 @@ function NavBar() {
 
   const handleLogout = () => {
     logout();
+    navigate('/');
   };
-
-  if (loading) {
-    // Optionally, show a spinner or nothing while loading
-    return null;
-  }
 
   return (
     <nav className="navbar">

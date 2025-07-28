@@ -1,8 +1,6 @@
 import "../css/Login.css";
 import { Link } from "react-router-dom";
 import Google from "../images/Google.png";
-import Envelope from "../images/Envelope.png";
-import X from "../images/X.png";
 import { useState, useEffect } from 'react';
 import { useAuth } from '../services/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -13,6 +11,7 @@ function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,30 +39,22 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+    
+    console.log('Starting login with:', credentials);
     
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-      
-      login({ 
-        user: data.user,
-        token: data.token 
-      });
+      const result = await login(credentials);
+      console.log('Login successful:', result);
       
       navigate('/');
       
     } catch (err) {
-      setError(err.message);
       console.error('Login error:', err);
+      setError(err.message || 'Login failed');
+    } finally {
+      console.log('Login process finished');
+      setLoading(false);
     }
   };
 
@@ -96,6 +87,7 @@ function Login() {
                 value={credentials.username}
                 onChange={(e) => setCredentials({...credentials, username: e.target.value})}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -108,11 +100,12 @@ function Login() {
                 value={credentials.password}
                 onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                 required
+                disabled={loading}
               />
             </div>
 
-            <button type="submit" className="signin-btn">
-              Sign In
+            <button type="submit" className="signin-btn" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 

@@ -11,7 +11,12 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(bodyParser.json());
 
 console.log('Environment variables check:');
@@ -116,7 +121,6 @@ passport.use(new GoogleStrategy({
       if (existingUsers.length > 0) {
         user = existingUsers[0];
 
-        // Check if banned
         if (user.is_banned) {
           connection.release();
           return done(null, false, { message: 'Your account has been banned.' });
@@ -134,7 +138,6 @@ passport.use(new GoogleStrategy({
           user.auth_provider = 'google';
         }
       } else {
-        // Check if a banned user with this email ever existed (optional, for extra safety)
         let [bannedUsers] = await connection.query(
           'SELECT * FROM users WHERE email = ? AND is_banned = TRUE',
           [googleEmail]
@@ -198,30 +201,47 @@ app.post('/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+  console.log('Login attempt received:', req.body);
+  
   try {
     const { username, password } = req.body;
-    
+    console.log('Extracted credentials - Username:', username, 'Password length:', password?.length);
+
+    if (!username || !password) {
+      console.log('Missing credentials');
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    console.log('Querying database for user...');
     const [users] = await pool.query(
       'SELECT * FROM users WHERE username = ? AND auth_provider = ?', 
       [username, 'local']
     );
+    console.log('Database query result - Found users:', users.length);
     
     if (users.length === 0) {
+      console.log('No user found with username:', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     const user = users[0];
+    console.log('Found user:', { id: user.id, username: user.username, email: user.email, auth_provider: user.auth_provider });
 
     if (user.is_banned) {
+      console.log('User is banned');
       return res.status(403).json({ error: 'Your account has been banned.' });
     }
     
+    console.log('Comparing passwords...');
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Password match result:', isMatch);
     
     if (!isMatch) {
+      console.log('Password does not match');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
+
     const { password: _, ...userWithoutPassword } = user;
     
     const token = jwt.sign(
@@ -229,15 +249,18 @@ app.post('/api/login', async (req, res) => {
       process.env.JWT_SECRET, 
       { expiresIn: '1h' }
     );
+    console.log('JWT token generated successfully');
     
-    res.json({ 
+    console.log('Sending successful response');
+    return res.json({
+      success: true,
       user: userWithoutPassword,
-      token 
+      token
     });
     
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
 
@@ -266,7 +289,7 @@ app.get('/auth/google/callback',
     );
     
     console.log('Redirecting to frontend with token and user data');
-    res.redirect(`http://localhost:5173?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
+    res.redirect(`http://localhost:5173/?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
   }
 );
 

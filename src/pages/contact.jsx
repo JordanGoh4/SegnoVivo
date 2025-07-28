@@ -18,13 +18,6 @@ function Contact() {
                     <button className="contact-form-submit" type="submit">Send</button>
                   </form>
                 </div>
-                {/* <div className="social-section">
-                  <ul className="social-item-inner">
-                    <li><a href="#" aria-label="Facebook" className="facebook"><i className="fab fa-facebook-square"></i></a></li>
-                    <li><a href="#" aria-label="Instagram" className="instagram"><i className="fab fa-instagram"></i></a></li>
-                    <li><a href="#" aria-label="Twitter" className="twitter"><i className="fab fa-twitter"></i></a></li>
-                  </ul>
-                </div> */}
               </div>
             </section>
             <aside className="contact-info-sec" aria-labelledby="info-heading">
