@@ -2,7 +2,7 @@ import '../css/About.css';
 import { useState } from 'react';
 import kt from '../images/kt.png';
 import jg from '../images/jg.png';
-import caption from '../images/caption.png';
+import caption from '../images/Caption.png';
 import settings from '../images/Settings.png';
 import widget from '../images/Widgets.png';
 import secure from '../images/Secure.png';
