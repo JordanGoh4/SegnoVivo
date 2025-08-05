@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        const response = await fetch('http://localhost:3001/api/login', {
+        const response = await fetch('https://segnovivo.onrender.com/api/login', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

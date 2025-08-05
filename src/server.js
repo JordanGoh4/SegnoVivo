@@ -299,7 +299,7 @@ app.get('/auth/logout', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3306;
 app.listen(PORT, () => {
   console.log(`Server running on https://segnovivo.onrender.com`);
   console.log('Google OAuth endpoints:');
