@@ -299,11 +299,11 @@ app.get('/auth/logout', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3306;
 app.listen(PORT, () => {
-  console.log(`Server running on https://segnovivo.onrender.com`);
+  console.log(`Server running on http://localhost:${PORT}`);
   console.log('Google OAuth endpoints:');
-  console.log(`- Initiate: https://segnovivo.onrender.com/auth/google`);
-  console.log(`- Callback: https://segnovivo.onrender.com/auth/google/callback`);
-  console.log(`- Test DB: https://segnovivo.onrender.com/test-db`);
+  console.log(`- Initiate: http://localhost:${PORT}/auth/google`);
+  console.log(`- Callback: http://localhost:${PORT}/auth/google/callback`);
+  console.log(`- Test DB: http://localhost:${PORT}/test-db`);
 });
