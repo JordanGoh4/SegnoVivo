@@ -13,7 +13,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'https://segnovivo.onrender.com',
+  origin: 'http://localhost:5173',
   credentials: true
 }));
 
@@ -100,7 +100,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'https://segnovivo.onrender.com/auth/google/callback'
+    callbackURL: '/auth/google/callback'
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -289,21 +289,21 @@ app.get('/auth/google/callback',
     );
     
     console.log('Redirecting to frontend with token and user data');
-    res.redirect(`https://segnovivo.onrender.com/?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
+    res.redirect(`http://localhost:5173/?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
   }
 );
 
 app.get('/auth/logout', (req, res) => {
   req.logout(() => {
-    res.redirect('https://segnovivo.onrender.com/login');
+    res.redirect('http://localhost:5173/login');
   });
 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on https://segnovivo.onrender.com`);
+  console.log(`Server running on http://localhost:${PORT}`);
   console.log('Google OAuth endpoints:');
-  console.log(`- Initiate: https://segnovivo.onrender.com/auth/google`);
-  console.log(`- Callback: https://segnovivo.onrender.com/auth/google/callback`);
-  console.log(`- Test DB: https://segnovivo.onrender.com/test-db`);
+  console.log(`- Initiate: http://localhost:${PORT}/auth/google`);
+  console.log(`- Callback: http://localhost:${PORT}/auth/google/callback`);
+  console.log(`- Test DB: http://localhost:${PORT}/test-db`);
 });

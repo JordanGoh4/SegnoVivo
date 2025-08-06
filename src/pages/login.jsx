@@ -68,7 +68,7 @@ function Login() {
           <div className="social-login">Login using social account</div>
 
           <div className="social-icon" style={{ marginBottom: '1.5rem' }}>
-            <a href="https://segnovivo.onrender.com/auth/google">
+            <a href="http://localhost:3001/auth/google">
               <img src={Google} alt="Google Login"></img>
             </a>
           </div>
