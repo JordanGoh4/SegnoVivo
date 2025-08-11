@@ -12,8 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// Update CORS origin to your deployed frontend domain
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL, // e.g. 'https://segnovivo-h0gy.onrender.com'
   credentials: true
 }));
 
@@ -86,7 +87,7 @@ passport.deserializeUser(async (id, done) => {
     
     if (users.length > 0) {
       console.log('User found during deserialization:', users[0].email);
-      done(null, users[0]);
+      done(null, users);
     } else {
       console.log('No user found during deserialization');
       done(null, false);
@@ -100,7 +101,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback'
+    callbackURL: `${process.env.BACKEND_URL}/auth/google/callback` // Use your deployed backend URL here
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -109,7 +110,7 @@ passport.use(new GoogleStrategy({
       const googleEmail = profile.emails[0].value;
       const googleId = profile.id;
       const googleName = profile.displayName;
-      const googlePicture = profile.photos[0]?.value;
+      const googlePicture = profile.photos?.value;
 
       let [existingUsers] = await connection.query(
         'SELECT * FROM users WHERE email = ? OR google_id = ?',
@@ -202,7 +203,6 @@ app.post('/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   console.log('Login attempt received:', req.body);
-  
   try {
     const { username, password } = req.body;
     console.log('Extracted credentials - Username:', username, 'Password length:', password?.length);
@@ -241,7 +241,6 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-
     const { password: _, ...userWithoutPassword } = user;
     
     const token = jwt.sign(
@@ -282,28 +281,22 @@ app.get('/auth/google/callback',
     console.log('Google OAuth successful, user:', req.user);
     const { password, ...userWithoutPassword } = req.user;
     
-    const token = jwt.sign(
-      { id: req.user.id }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '1h' }
-    );
-    
-    console.log('Redirecting to frontend with token and user data');
-    res.redirect(`http://localhost:5173/?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
+    res.redirect(`${process.env.FRONTEND_URL}/?token=${jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1h' })}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
   }
 );
 
 app.get('/auth/logout', (req, res) => {
   req.logout(() => {
-    res.redirect('http://localhost:5173/login');
+    res.redirect(`${process.env.FRONTEND_URL}/login`);
   });
 });
 
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   console.log('Google OAuth endpoints:');
-  console.log(`- Initiate: http://localhost:${PORT}/auth/google`);
-  console.log(`- Callback: http://localhost:${PORT}/auth/google/callback`);
-  console.log(`- Test DB: http://localhost:${PORT}/test-db`);
+  console.log(`- Initiate: ${process.env.BACKEND_URL}/auth/google`);
+  console.log(`- Callback: ${process.env.BACKEND_URL}/auth/google/callback`);
+  console.log(`- Test DB: ${process.env.BACKEND_URL}/test-db`);
 });
