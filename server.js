@@ -12,9 +12,11 @@ dotenv.config();
 
 const app = express();
 
-// Update CORS origin to your deployed frontend domain
+const FRONTEND_URL = 'https://segnovivo-h0gy.onrender.com';
+const BACKEND_URL  = 'https://segnovivo-c1iv.onrender.com';
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL, // e.g. 'https://segnovivo-h0gy.onrender.com'
+  origin: FRONTEND_URL,
   credentials: true
 }));
 
@@ -24,6 +26,8 @@ console.log('Environment variables check:');
 console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'NOT SET');
 console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'NOT SET');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'NOT SET');
+console.log('Using FRONTEND_URL:', FRONTEND_URL);
+console.log('Using BACKEND_URL:', BACKEND_URL);
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -39,7 +43,7 @@ async function initializeDatabase() {
   try {
     const connection = await pool.getConnection();
     console.log('Database connection successful');
-    
+
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -84,7 +88,7 @@ passport.deserializeUser(async (id, done) => {
     const connection = await pool.getConnection();
     const [users] = await connection.query('SELECT * FROM users WHERE id = ?', [id]);
     connection.release();
-    
+
     if (users.length > 0) {
       console.log('User found during deserialization:', users[0].email);
       done(null, users);
@@ -98,19 +102,20 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${process.env.BACKEND_URL}/auth/google/callback` // Use your deployed backend URL here
+passport.use(new GoogleStrategy(
+  {
+    clientID: process.env.GOOGLE_CLIENT_ID,         
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET, 
+    callbackURL: `${BACKEND_URL}/auth/google/callback`
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
       const connection = await pool.getConnection();
 
-      const googleEmail = profile.emails[0].value;
+      const googleEmail = profile.emails?.[0]?.value;
       const googleId = profile.id;
       const googleName = profile.displayName;
-      const googlePicture = profile.photos?.value;
+      const googlePicture = profile.photos?.[0]?.value; 
 
       let [existingUsers] = await connection.query(
         'SELECT * FROM users WHERE email = ? OR google_id = ?',
@@ -120,7 +125,7 @@ passport.use(new GoogleStrategy({
       let user;
 
       if (existingUsers.length > 0) {
-        user = existingUsers[0];
+        user = existingUsers;
 
         if (user.is_banned) {
           connection.release();
@@ -159,7 +164,6 @@ passport.use(new GoogleStrategy({
 
       connection.release();
       return done(null, user);
-
     } catch (error) {
       console.error('Google auth error:', error);
       return done(error, null);
@@ -183,14 +187,14 @@ app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const connection = await pool.getConnection();
     const [result] = await connection.query(
       'INSERT INTO users (username, email, password, auth_provider) VALUES (?, ?, ?, ?)',
       [username, email, hashedPassword, 'local']
     );
     connection.release();
-    
+
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -218,12 +222,12 @@ app.post('/api/login', async (req, res) => {
       [username, 'local']
     );
     console.log('Database query result - Found users:', users.length);
-    
+
     if (users.length === 0) {
       console.log('No user found with username:', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const user = users[0];
     console.log('Found user:', { id: user.id, username: user.username, email: user.email, auth_provider: user.auth_provider });
 
@@ -231,32 +235,32 @@ app.post('/api/login', async (req, res) => {
       console.log('User is banned');
       return res.status(403).json({ error: 'Your account has been banned.' });
     }
-    
+
     console.log('Comparing passwords...');
     const isMatch = await bcrypt.compare(password, user.password);
     console.log('Password match result:', isMatch);
-    
+
     if (!isMatch) {
       console.log('Password does not match');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const { password: _, ...userWithoutPassword } = user;
-    
+
     const token = jwt.sign(
       { id: user.id }, 
       process.env.JWT_SECRET, 
       { expiresIn: '1h' }
     );
     console.log('JWT token generated successfully');
-    
+
     console.log('Sending successful response');
     return res.json({
       success: true,
       user: userWithoutPassword,
       token
     });
-    
+
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ error: 'Server error', details: error.message });
@@ -280,23 +284,23 @@ app.get('/auth/google/callback',
   (req, res) => {
     console.log('Google OAuth successful, user:', req.user);
     const { password, ...userWithoutPassword } = req.user;
-    
-    res.redirect(`${process.env.FRONTEND_URL}/?token=${jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1h' })}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
+
+    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.redirect(`${FRONTEND_URL}/?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
   }
 );
 
 app.get('/auth/logout', (req, res) => {
   req.logout(() => {
-    res.redirect(`${process.env.FRONTEND_URL}/login`);
+    res.redirect(`${FRONTEND_URL}/login`);
   });
 });
-
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Google OAuth endpoints:');
-  console.log(`- Initiate: ${process.env.BACKEND_URL}/auth/google`);
-  console.log(`- Callback: ${process.env.BACKEND_URL}/auth/google/callback`);
-  console.log(`- Test DB: ${process.env.BACKEND_URL}/test-db`);
+  console.log(`- Initiate: ${BACKEND_URL}/auth/google`);
+  console.log(`- Callback: ${BACKEND_URL}/auth/google/callback`);
+  console.log(`- Test DB: ${BACKEND_URL}/test-db`);
 });
